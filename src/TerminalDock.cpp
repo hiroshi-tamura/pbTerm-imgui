@@ -441,6 +441,15 @@ Terminal* TerminalDock::activeTerminal() {
     return m_terminal.get();
 }
 
+void TerminalDock::sendText(const std::string& text) {
+    if (!m_connected || !m_channel || text.empty()) {
+        return;
+    }
+
+    // テキストをSSHチャンネルに送信
+    m_channel->write(text.c_str(), text.length());
+}
+
 void TerminalDock::onTmuxWindowListChanged(const std::vector<TmuxWindow>& windows) {
     // 既存タブと新しいウィンドウリストを同期
 

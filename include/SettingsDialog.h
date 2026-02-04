@@ -42,6 +42,7 @@ struct Localization {
     const char* menuSetting;
     const char* menuView;
     const char* menuTerminal;
+    const char* menuCommands;
     const char* menuOption;
 
     // 接続状態

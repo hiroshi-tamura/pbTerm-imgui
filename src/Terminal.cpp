@@ -286,6 +286,9 @@ void Terminal::resize(int cols, int rows) {
     // リサイズ中フラグを設定（スクロールバックへのプッシュを抑制）
     m_resizing = true;
 
+    // スクロールバックをクリア（リサイズ時の表示崩れを防ぐ）
+    m_scrollback.clear();
+
     m_cols = cols;
     m_rows = rows;
 
@@ -306,6 +309,9 @@ void Terminal::resize(int cols, int rows) {
 
     // リサイズ中フラグを解除
     m_resizing = false;
+
+    // リサイズ時間を記録（リサイズ後一定期間スクロールバックへのプッシュを抑制）
+    m_lastResizeTime = std::chrono::steady_clock::now();
 
     updateScreen();
 }
@@ -737,6 +743,13 @@ int Terminal::onSbPushline(int cols, const VTermScreenCell* cells, void* user) {
     // リサイズ中はスクロールバックへのプッシュをスキップ
     if (term->m_resizing) {
         return 1;  // 1を返してlibvtermに処理完了を通知
+    }
+
+    // リサイズ後の抑制期間中もスキップ
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - term->m_lastResizeTime).count();
+    if (elapsed < RESIZE_SUPPRESS_MS) {
+        return 1;
     }
 
     // スクロールバック行を保存

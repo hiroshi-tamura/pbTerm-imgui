@@ -16,6 +16,7 @@ static const Localization englishLocalization = {
     "Setting...",
     "View",
     "Terminal",
+    "Commands",
     "Option",
 
     // 接続状態
@@ -68,6 +69,7 @@ static const Localization japaneseLocalization = {
     "設定...",
     "表示",
     "ターミナル",
+    "コマンド",
     "オプション",
 
     // 接続状態

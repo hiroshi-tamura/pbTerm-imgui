@@ -54,6 +54,9 @@ public:
     // アクティブターミナル
     Terminal* activeTerminal();
 
+    // テキストを送信（コマンドショートカット用）
+    void sendText(const std::string& text);
+
     // tmuxウィンドウ一覧が更新された時のコールバック
     void onTmuxWindowListChanged(const std::vector<TmuxWindow>& windows);
 

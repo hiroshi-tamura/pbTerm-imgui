@@ -5,6 +5,7 @@
 #include "SshConnection.h"
 #include "TmuxController.h"
 #include "SettingsDialog.h"
+#include "CommandDock.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -14,6 +15,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <filesystem>
+
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -107,6 +109,16 @@ bool App::init() {
         onSettingsApplied(settings);
     });
 
+    // コマンドドック初期化
+    m_commandDock = std::make_unique<CommandDock>();
+    m_commandDock->setSendCommandCallback([this](const std::string& cmd) {
+        if (m_terminalDock && m_terminalDock->isConnected()) {
+            m_terminalDock->sendText(cmd);
+            // ターミナルウィンドウにフォーカスを移す（###で指定したIDを使用）
+            ImGui::SetWindowFocus("###Terminal");
+        }
+    });
+
     // オート接続
     const Profile* autoProfile = m_profileManager->autoConnectProfile();
     if (autoProfile) {
@@ -131,6 +143,10 @@ void App::setupImGui() {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    // macOS IME対応：Enter時にInputTextを閉じない
+    io.ConfigInputTextEnterKeepActive = true;
+
 
     // ImGuiのiniファイルを設定ディレクトリに保存
     m_imguiIniPath = AppSettings::configDir() + "/imgui.ini";
@@ -228,6 +244,12 @@ void App::loadFont() {
 
     // フォントアトラス構築
     io.Fonts->Build();
+
+    // デフォルトフォントを設定（日本語入力に必要）
+    if (m_font) {
+        io.FontDefault = m_font;
+        std::cout << "FontDefault set to Japanese font" << std::endl;
+    }
 }
 
 void App::reloadFont() {
@@ -364,6 +386,7 @@ void App::renderMenuBar() {
 
         if (ImGui::BeginMenu(loc.menuView)) {
             ImGui::MenuItem(loc.menuTerminal, nullptr, &m_showTerminal);
+            ImGui::MenuItem(loc.menuCommands, nullptr, &m_showCommands);
             ImGui::EndMenu();
         }
 
@@ -389,6 +412,7 @@ void App::renderMenuBar() {
 void App::renderUI() {
     const Localization& loc = getLocalization(m_appSettings.language);
 
+
     // ターミナルドック（###でIDを固定、表示名は言語に応じて変更）
     if (m_showTerminal) {
         char title[128];
@@ -396,6 +420,16 @@ void App::renderUI() {
         ImGui::Begin(title, &m_showTerminal);
         m_terminalDock->setLanguage(m_appSettings.language);
         m_terminalDock->render(m_font);
+        ImGui::End();
+    }
+
+    // コマンドドック
+    if (m_showCommands) {
+        char title[128];
+        snprintf(title, sizeof(title), "%s###Commands", loc.menuCommands);
+        ImGui::Begin(title, &m_showCommands);
+        m_commandDock->setLanguage(m_appSettings.language);
+        m_commandDock->render();
         ImGui::End();
     }
 
@@ -469,6 +503,7 @@ void App::shutdown() {
     m_terminalDock.reset();
     m_connectionDialog.reset();
     m_settingsDialog.reset();
+    m_commandDock.reset();
     m_tmuxController.reset();
     m_sshConnection.reset();
     m_profileManager->save();

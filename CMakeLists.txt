@@ -52,6 +52,7 @@ set(APP_SOURCES
     src/ProfileManager.cpp
     src/SettingsDialog.cpp
     src/TmuxController.cpp
+    src/CommandDock.cpp
 )
 
 # macOS .appバンドル

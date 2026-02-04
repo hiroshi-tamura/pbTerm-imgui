@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <chrono>
 #include <vterm.h>
 #include "imgui.h"
 
@@ -110,6 +111,10 @@ private:
 
     // リサイズ中フラグ（リサイズ中はスクロールバックへのプッシュを抑制）
     bool m_resizing = false;
+
+    // リサイズ後の抑制期間（リサイズ後しばらくスクロールバックへのプッシュを抑制）
+    std::chrono::steady_clock::time_point m_lastResizeTime;
+    static constexpr int RESIZE_SUPPRESS_MS = 500;  // 500ms間抑制
 
     // マウス選択
     bool m_selecting = false;

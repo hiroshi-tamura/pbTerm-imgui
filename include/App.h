@@ -14,6 +14,7 @@ class ConnectionDialog;
 class ProfileManager;
 class SshConnection;
 class TmuxController;
+class CommandDock;
 
 // アプリケーションメインクラス
 class App {
@@ -53,10 +54,12 @@ private:
     std::unique_ptr<SshConnection> m_sshConnection;
     std::unique_ptr<TmuxController> m_tmuxController;
     std::unique_ptr<SettingsDialog> m_settingsDialog;
+    std::unique_ptr<CommandDock> m_commandDock;
 
     AppSettings m_appSettings;
 
     bool m_showTerminal = true;
+    bool m_showCommands = true;
     bool m_showConnectionDialog = false;
     bool m_showSettings = false;
     bool m_connected = false;
