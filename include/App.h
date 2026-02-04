@@ -15,6 +15,7 @@ class ProfileManager;
 class SshConnection;
 class TmuxController;
 class CommandDock;
+class FolderTreeDock;
 
 // アプリケーションメインクラス
 class App {
@@ -55,11 +56,13 @@ private:
     std::unique_ptr<TmuxController> m_tmuxController;
     std::unique_ptr<SettingsDialog> m_settingsDialog;
     std::unique_ptr<CommandDock> m_commandDock;
+    std::unique_ptr<FolderTreeDock> m_folderTreeDock;
 
     AppSettings m_appSettings;
 
     bool m_showTerminal = true;
     bool m_showCommands = true;
+    bool m_showFolders = true;
     bool m_showConnectionDialog = false;
     bool m_showSettings = false;
     bool m_connected = false;

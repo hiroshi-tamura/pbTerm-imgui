@@ -43,6 +43,7 @@ struct Localization {
     const char* menuView;
     const char* menuTerminal;
     const char* menuCommands;
+    const char* menuFolders;
     const char* menuOption;
 
     // 接続状態
@@ -84,6 +85,19 @@ struct Localization {
 
     // ターミナル
     const char* termPleaseConnect;
+
+    // フォルダツリー
+    const char* dockFoldersTitle;
+    const char* folderNew;
+    const char* folderDelete;
+    const char* folderNewTitle;
+    const char* folderNewName;
+    const char* folderCreate;
+    const char* folderCancel;
+    const char* folderDeleteTitle;
+    const char* folderDeleteMessage;
+    const char* folderDeleteYes;
+    const char* folderDeleteNo;
 };
 
 // 言語取得

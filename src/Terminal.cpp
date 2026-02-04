@@ -582,6 +582,17 @@ void Terminal::render(ImFont* font) {
         }
     }
 
+    // フォルダツリーからのドラッグ＆ドロップ
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PBTERM_PATH")) {
+            if (payload->Data && payload->DataSize > 0) {
+                const char* path = static_cast<const char*>(payload->Data);
+                sendToConnection(path, std::strlen(path));
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
     ImGui::EndChild();
     ImGui::PopFont();
 }

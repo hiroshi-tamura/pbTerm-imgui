@@ -47,6 +47,7 @@ void TerminalDock::onConnected() {
             tab.id = m_nextTabId++;
             tab.tmuxWindowIndex = win.index;
             tab.name = win.name.empty() ? ("Window " + std::to_string(win.index)) : win.name;
+            tab.currentPath = win.currentPath;
             m_tabs.push_back(tab);
 
             if (win.active) {
@@ -172,6 +173,17 @@ void TerminalDock::render(ImFont* font) {
         ));
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", loc.termPleaseConnect);
         return;
+    }
+
+    // tmuxの現在パスを定期的に更新
+    if (m_tmuxController && m_tmuxController->isAttached()) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastWindowPoll).count();
+        if (elapsed > 1000) {
+            auto windows = m_tmuxController->listWindows();
+            onTmuxWindowListChanged(windows);
+            m_lastWindowPoll = now;
+        }
     }
 
     // タブバーとターミナル
@@ -374,6 +386,7 @@ int TerminalDock::addTab(const std::string& name) {
         tab.id = m_nextTabId++;
         tab.tmuxWindowIndex = newWindow.index;
         tab.name = newWindow.name.empty() ? ("Window " + std::to_string(newWindow.index)) : newWindow.name;
+        tab.currentPath = newWindow.currentPath;
         m_tabs.push_back(tab);
 
         // 新しいタブをアクティブに
@@ -441,6 +454,13 @@ Terminal* TerminalDock::activeTerminal() {
     return m_terminal.get();
 }
 
+std::string TerminalDock::activePath() const {
+    if (m_activeTab >= 0 && m_activeTab < static_cast<int>(m_tabs.size())) {
+        return m_tabs[m_activeTab].currentPath;
+    }
+    return std::string();
+}
+
 void TerminalDock::sendText(const std::string& text) {
     if (!m_connected || !m_channel || text.empty()) {
         return;
@@ -483,6 +503,7 @@ void TerminalDock::onTmuxWindowListChanged(const std::vector<TmuxWindow>& window
             if (tab.tmuxWindowIndex == win.index) {
                 // 名前更新
                 tab.name = win.name.empty() ? ("Window " + std::to_string(win.index)) : win.name;
+                tab.currentPath = win.currentPath;
                 found = true;
                 break;
             }
@@ -492,6 +513,7 @@ void TerminalDock::onTmuxWindowListChanged(const std::vector<TmuxWindow>& window
             tab.id = m_nextTabId++;
             tab.tmuxWindowIndex = win.index;
             tab.name = win.name.empty() ? ("Window " + std::to_string(win.index)) : win.name;
+            tab.currentPath = win.currentPath;
             m_tabs.push_back(tab);
         }
     }

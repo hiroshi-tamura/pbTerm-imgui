@@ -17,6 +17,7 @@ static const Localization englishLocalization = {
     "View",
     "Terminal",
     "Commands",
+    "Folders",
     "Option",
 
     // 接続状態
@@ -58,6 +59,19 @@ static const Localization englishLocalization = {
 
     // ターミナル
     "Please connect to a server",
+
+    // フォルダツリー
+    "Folder Tree",
+    "New Folder",
+    "Delete",
+    "Create Folder",
+    "Folder Name",
+    "Create",
+    "Cancel",
+    "Delete",
+    "Delete this path?\n%s",
+    "Yes",
+    "No",
 };
 
 // 日本語ローカライゼーション
@@ -70,6 +84,7 @@ static const Localization japaneseLocalization = {
     "表示",
     "ターミナル",
     "コマンド",
+    "フォルダ",
     "オプション",
 
     // 接続状態
@@ -111,6 +126,19 @@ static const Localization japaneseLocalization = {
 
     // ターミナル
     "接続してください",
+
+    // フォルダツリー
+    "フォルダツリー",
+    "新規フォルダ",
+    "削除",
+    "フォルダ作成",
+    "フォルダ名",
+    "作成",
+    "キャンセル",
+    "削除",
+    "このパスを削除しますか？\n%s",
+    "はい",
+    "いいえ",
 };
 
 const Localization& getLocalization(int language) {

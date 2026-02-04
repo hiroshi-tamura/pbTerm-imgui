@@ -6,6 +6,7 @@
 #include "TmuxController.h"
 #include "SettingsDialog.h"
 #include "CommandDock.h"
+#include "FolderTreeDock.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -98,6 +99,9 @@ bool App::init() {
             }
             m_connected = true;
             m_terminalDock->onConnected();
+            if (m_folderTreeDock) {
+                m_folderTreeDock->onConnected();
+            }
             m_showConnectionDialog = false;
         }
     });
@@ -119,6 +123,11 @@ bool App::init() {
         }
     });
 
+    // フォルダツリードック初期化
+    m_folderTreeDock = std::make_unique<FolderTreeDock>();
+    m_folderTreeDock->setConnection(m_sshConnection.get());
+    m_folderTreeDock->setTerminalDock(m_terminalDock.get());
+
     // オート接続
     const Profile* autoProfile = m_profileManager->autoConnectProfile();
     if (autoProfile) {
@@ -130,6 +139,9 @@ bool App::init() {
             }
             m_connected = true;
             m_terminalDock->onConnected();
+            if (m_folderTreeDock) {
+                m_folderTreeDock->onConnected();
+            }
         }
     }
 
@@ -240,6 +252,34 @@ void App::loadFont() {
     if (!m_font) {
         std::cerr << "Font load failed, using default font" << std::endl;
         m_font = io.Fonts->AddFontDefault();
+    }
+
+    // Material Icons フォントをマージ
+    std::string iconPath = "resources/fonts/MaterialIcons-Regular.ttf";
+    if (!std::filesystem::exists(iconPath)) {
+        iconPath = "../resources/fonts/MaterialIcons-Regular.ttf";
+    }
+#ifdef __APPLE__
+    if (!std::filesystem::exists(iconPath)) {
+        char execPath[PATH_MAX];
+        uint32_t size = sizeof(execPath);
+        if (_NSGetExecutablePath(execPath, &size) == 0) {
+            std::string bundlePath = dirname(dirname(execPath));
+            iconPath = bundlePath + "/Resources/resources/fonts/MaterialIcons-Regular.ttf";
+        }
+    }
+#endif
+
+    if (std::filesystem::exists(iconPath)) {
+        ImFontConfig iconConfig;
+        iconConfig.MergeMode = true;
+        iconConfig.PixelSnapH = true;
+        iconConfig.GlyphMinAdvanceX = m_appSettings.fontSize;
+        static const ImWchar iconRanges[] = { 0xE000, 0xF8FF, 0 };
+        io.Fonts->AddFontFromFileTTF(iconPath.c_str(), m_appSettings.fontSize, &iconConfig, iconRanges);
+        std::cout << "Material Icons loaded: " << iconPath << std::endl;
+    } else {
+        std::cerr << "Material Icons font not found: " << iconPath << std::endl;
     }
 
     // フォントアトラス構築
@@ -387,6 +427,7 @@ void App::renderMenuBar() {
         if (ImGui::BeginMenu(loc.menuView)) {
             ImGui::MenuItem(loc.menuTerminal, nullptr, &m_showTerminal);
             ImGui::MenuItem(loc.menuCommands, nullptr, &m_showCommands);
+            ImGui::MenuItem(loc.menuFolders, nullptr, &m_showFolders);
             ImGui::EndMenu();
         }
 
@@ -433,6 +474,16 @@ void App::renderUI() {
         ImGui::End();
     }
 
+    // フォルダツリードック
+    if (m_showFolders) {
+        char title[128];
+        snprintf(title, sizeof(title), "%s###Folders", loc.menuFolders);
+        ImGui::Begin(title, &m_showFolders);
+        m_folderTreeDock->setLanguage(m_appSettings.language);
+        m_folderTreeDock->render();
+        ImGui::End();
+    }
+
     // 接続設定ダイアログ
     if (m_showConnectionDialog) {
         m_connectionDialog->setLanguage(m_appSettings.language);
@@ -471,6 +522,9 @@ void App::disconnect() {
     m_sshConnection->disconnect();
     m_connected = false;
     m_terminalDock->onDisconnected();
+    if (m_folderTreeDock) {
+        m_folderTreeDock->onDisconnected();
+    }
 }
 
 void App::framebufferSizeCallback(GLFWwindow* window, int width, int height) {

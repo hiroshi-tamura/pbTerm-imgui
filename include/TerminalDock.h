@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <chrono>
 #include "imgui.h"
 
 namespace pbterm {
@@ -19,6 +20,7 @@ struct TerminalTabInfo {
     int id;                          // ローカルID
     int tmuxWindowIndex = -1;        // tmuxウィンドウインデックス
     std::string name;                // タブ名（tmuxウィンドウ名）
+    std::string currentPath;         // アクティブな作業ディレクトリ
 };
 
 // ターミナルドック
@@ -50,6 +52,7 @@ public:
     void setActiveTab(int index);
     int activeTabIndex() const { return m_activeTab; }
     int tabCount() const { return static_cast<int>(m_tabs.size()); }
+    std::string activePath() const;
 
     // アクティブターミナル
     Terminal* activeTerminal();
@@ -90,6 +93,8 @@ private:
     float m_tabHeight = 0;
     float m_closeButtonSize = 16.0f;
     float m_addButtonSize = 20.0f;
+
+    std::chrono::steady_clock::time_point m_lastWindowPoll;
 };
 
 } // namespace pbterm

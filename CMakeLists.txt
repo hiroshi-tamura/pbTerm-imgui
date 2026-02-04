@@ -53,6 +53,7 @@ set(APP_SOURCES
     src/SettingsDialog.cpp
     src/TmuxController.cpp
     src/CommandDock.cpp
+    src/FolderTreeDock.cpp
 )
 
 # macOS .appバンドル
