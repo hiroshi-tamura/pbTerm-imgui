@@ -1,0 +1,27 @@
+# ビルドディレクトリ
+build/
+cmake-build-*/
+
+# IDE
+.idea/
+.vscode/
+*.xcodeproj/
+*.xcworkspace/
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# ImGui設定（ローカル）
+imgui.ini
+
+# コンパイル成果物
+*.o
+*.a
+*.dylib
+*.so
+
+# 一時ファイル
+*.swp
+*.swo
+*~
