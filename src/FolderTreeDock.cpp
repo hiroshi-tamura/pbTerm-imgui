@@ -103,12 +103,29 @@ void FolderTreeDock::render() {
     }
     ImGui::PopID();
 
+    ImGui::SameLine();
+
+    const char* iconLocate = u8"\ue55c"; // my_location
+    ImGui::PushID("focus_current");
+    if (ImGui::Button(iconLocate)) {
+        if (!activePath.empty()) {
+            m_focusPath = activePath;
+            m_focusPending = true;
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Focus current folder");
+    }
+    ImGui::PopID();
+
     ImGui::Separator();
 
     ImGui::BeginChild("##folderTree", ImVec2(0, 0), ImGuiChildFlags_None);
 
+    const std::string focusPath = m_focusPending ? m_focusPath : std::string();
+
     for (auto& root : m_roots) {
-        renderNode(*root, activePath);
+        renderNode(*root, activePath, focusPath);
     }
 
     ImGui::EndChild();
@@ -236,10 +253,21 @@ std::vector<std::unique_ptr<FolderTreeDock::Node>> FolderTreeDock::listDirectory
         }
     }
 
+    std::sort(out.begin(), out.end(), [](const std::unique_ptr<Node>& a, const std::unique_ptr<Node>& b) {
+        if (a->isDir != b->isDir) {
+            return a->isDir && !b->isDir;
+        }
+        std::string an = a->name;
+        std::string bn = b->name;
+        std::transform(an.begin(), an.end(), an.begin(), [](unsigned char c){ return std::tolower(c); });
+        std::transform(bn.begin(), bn.end(), bn.begin(), [](unsigned char c){ return std::tolower(c); });
+        return an < bn;
+    });
+
     return out;
 }
 
-void FolderTreeDock::renderNode(Node& node, const std::string& activePath) {
+void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const std::string& focusPath) {
     const Localization& loc = getLocalization(m_language);
 
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth;
@@ -251,6 +279,10 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath) {
 
     if (!activePath.empty() && isPathMatch(node.path, activePath)) {
         flags |= ImGuiTreeNodeFlags_Selected;
+    }
+
+    if (!focusPath.empty() && node.isDir && isAncestorPath(node.path, focusPath)) {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
     }
 
     const char* icon = node.isDir ? kIconFolder : kIconFile;
@@ -300,12 +332,20 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath) {
     ImGui::SameLine();
     ImGui::TextUnformatted(node.name.c_str());
 
+    if (!focusPath.empty() && isPathMatch(node.path, focusPath)) {
+        ImVec2 min = ImGui::GetItemRectMin();
+        ImVec2 max = ImGui::GetItemRectMax();
+        float centerY = (min.y + max.y) * 0.5f;
+        ImGui::SetScrollFromPosY(centerY, 0.5f);
+        m_focusPending = false;
+    }
+
     if (node.isDir && open) {
         if (!node.loaded) {
             loadChildren(node);
         }
         for (auto& child : node.children) {
-            renderNode(*child, activePath);
+            renderNode(*child, activePath, focusPath);
         }
         ImGui::TreePop();
     }
@@ -426,6 +466,28 @@ bool FolderTreeDock::isPathMatch(const std::string& path, const std::string& act
         return true;
     }
     return path == activePath;
+}
+
+bool FolderTreeDock::isAncestorPath(const std::string& path, const std::string& targetPath) const {
+    if (path.empty() || targetPath.empty()) return false;
+    if (m_platform == RemotePlatform::Windows) {
+        std::string p = path;
+        std::string t = targetPath;
+        std::transform(p.begin(), p.end(), p.begin(), [](unsigned char c){ return std::tolower(c); });
+        std::transform(t.begin(), t.end(), t.begin(), [](unsigned char c){ return std::tolower(c); });
+        if (t.size() < p.size()) return false;
+        if (t.rfind(p, 0) != 0) return false;
+        if (t.size() == p.size()) return true;
+        char sep = '\\';
+        if (p.back() != sep) return t[p.size()] == sep;
+        return true;
+    }
+
+    if (targetPath.size() < path.size()) return false;
+    if (targetPath.rfind(path, 0) != 0) return false;
+    if (targetPath.size() == path.size()) return true;
+    if (path.back() == '/') return true;
+    return targetPath[path.size()] == '/';
 }
 
 std::string FolderTreeDock::exec(const std::string& cmd, int timeoutMs) const {

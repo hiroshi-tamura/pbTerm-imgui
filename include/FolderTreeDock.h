@@ -48,7 +48,7 @@ private:
     static std::string joinPathUnix(const std::string& base, const std::string& name);
     static std::string joinPathWindows(const std::string& base, const std::string& name);
 
-    void renderNode(Node& node, const std::string& activePath);
+    void renderNode(Node& node, const std::string& activePath, const std::string& focusPath);
     void openNewFolderDialog(const std::string& parentPath);
     void openDeleteDialog(const std::string& targetPath, bool isDir);
     void renderNewFolderDialog();
@@ -56,6 +56,7 @@ private:
     void refreshNodeByPath(const std::string& path);
 
     bool isPathMatch(const std::string& path, const std::string& activePath) const;
+    bool isAncestorPath(const std::string& path, const std::string& targetPath) const;
 
     SshConnection* m_connection = nullptr;
     TerminalDock* m_terminalDock = nullptr;
@@ -66,6 +67,8 @@ private:
 
     bool m_showHiddenDirs = false;
     bool m_showHiddenFiles = false;
+    bool m_focusPending = false;
+    std::string m_focusPath;
 
     // dialogs
     bool m_showNewFolder = false;
