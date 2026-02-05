@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/icon/pbTerm.png" alt="pbTerm Logo" width="128">
+  <img src="docs/logo.png" alt="pbTerm Logo" width="128">
 </p>
 
 <h1 align="center">pbTerm</h1>
