@@ -198,11 +198,16 @@ bool App::init() {
 
     m_connectionDialog = std::make_unique<ConnectionDialog>(m_profileManager.get());
     m_connectionDialog->setConnectCallback([this](const SshConfig& config) {
+        if (m_connected) {
+            disconnect();
+        }
         if (m_sshConnection->connect(config)) {
             // tmuxセッションにアタッチ
             m_tmuxController->setConnection(m_sshConnection.get());
             if (m_tmuxController->startOrAttachSession()) {
                 std::cout << "tmuxセッションにアタッチしました" << std::endl;
+            } else {
+                m_showTmuxMissing = true;
             }
             m_connected = true;
             m_terminalDock->onConnected();
@@ -243,6 +248,8 @@ bool App::init() {
             m_tmuxController->setConnection(m_sshConnection.get());
             if (m_tmuxController->startOrAttachSession()) {
                 std::cout << "tmuxセッションにアタッチしました（オート接続）" << std::endl;
+            } else {
+                m_showTmuxMissing = true;
             }
             m_connected = true;
             m_terminalDock->onConnected();
@@ -532,15 +539,11 @@ void App::renderMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu(loc.menuConnect)) {
             if (ImGui::MenuItem(loc.menuStart, nullptr, false, !m_connected)) {
-                connect();
+                m_connectionDialog->initForShow();
+                m_showConnectionDialog = true;
             }
             if (ImGui::MenuItem(loc.menuStop, nullptr, false, m_connected)) {
                 disconnect();
-            }
-            ImGui::Separator();
-            if (ImGui::MenuItem(loc.menuSetting)) {
-                m_connectionDialog->initForShow();
-                m_showConnectionDialog = true;
             }
             ImGui::EndMenu();
         }
@@ -653,21 +656,42 @@ void App::renderUI() {
     if (m_showSettings) {
         m_settingsDialog->render(&m_showSettings);
     }
+
+    // tmux未インストールダイアログ
+    if (m_showTmuxMissing) {
+        ImGui::OpenPopup(loc.dlgTmuxMissingTitle);
+        m_showTmuxMissing = false;
+    }
+    if (ImGui::BeginPopupModal(loc.dlgTmuxMissingTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(loc.dlgTmuxMissingMessage);
+        ImGui::Spacing();
+        if (ImGui::Button(loc.dlgTmuxMissingOk, ImVec2(100, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
 }
 
 void App::connect() {
     // 最後に使用したプロファイルで接続、なければダイアログ表示
     if (m_profileManager->profileCount() > 0) {
         const Profile* profile = m_profileManager->getProfile(0);
-        if (profile && m_sshConnection->connect(profile->config)) {
+        if (profile) {
+            if (m_connected) {
+                disconnect();
+            }
+            if (m_sshConnection->connect(profile->config)) {
             // tmuxセッションにアタッチ
             m_tmuxController->setConnection(m_sshConnection.get());
             if (m_tmuxController->startOrAttachSession()) {
                 std::cout << "tmuxセッションにアタッチしました" << std::endl;
+            } else {
+                m_showTmuxMissing = true;
             }
             m_connected = true;
             m_terminalDock->onConnected();
             return;
+            }
         }
     }
     m_connectionDialog->initForShow();

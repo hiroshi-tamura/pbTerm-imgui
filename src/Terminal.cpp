@@ -316,6 +316,28 @@ void Terminal::resize(int cols, int rows) {
     updateScreen();
 }
 
+void Terminal::clearScreen() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    // スクロールバックをクリア
+    m_scrollback.clear();
+
+    // セルを空に
+    for (auto& row : m_cells) {
+        for (auto& cell : row) {
+            cell.text.clear();
+            cell.width = 1;
+        }
+    }
+
+    // vterm側もリセット
+    if (m_screen) {
+        vterm_screen_reset(m_screen, 1);
+    }
+
+    m_autoScroll = true;
+}
+
 void Terminal::render(ImFont* font) {
     std::lock_guard<std::mutex> lock(m_mutex);
 

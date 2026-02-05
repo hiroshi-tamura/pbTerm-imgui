@@ -75,6 +75,11 @@ static const Localization englishLocalization = {
     "Delete this path?\n%s",
     "Yes",
     "No",
+
+    // tmux未インストール
+    "tmux not found",
+    "tmux is not installed on the remote host.",
+    "OK",
 };
 
 // 日本語ローカライゼーション
@@ -145,6 +150,11 @@ static const Localization japaneseLocalization = {
     "このパスを削除しますか？\n%s",
     "はい",
     "いいえ",
+
+    // tmux未インストール
+    "tmuxが見つかりません",
+    "接続先PCにtmuxがインストールされていません。",
+    "OK",
 };
 
 const Localization& getLocalization(int language) {

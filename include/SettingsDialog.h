@@ -101,6 +101,11 @@ struct Localization {
     const char* folderDeleteMessage;
     const char* folderDeleteYes;
     const char* folderDeleteNo;
+
+    // tmux未インストール
+    const char* dlgTmuxMissingTitle;
+    const char* dlgTmuxMissingMessage;
+    const char* dlgTmuxMissingOk;
 };
 
 // 言語取得

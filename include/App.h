@@ -79,6 +79,7 @@ private:
     bool m_showSettings = false;
     bool m_connected = false;
     bool m_needFontReload = false;
+    bool m_showTmuxMissing = false;
 
     int m_windowWidth = 1280;
     int m_windowHeight = 720;

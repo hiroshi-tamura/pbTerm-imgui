@@ -63,6 +63,9 @@ public:
     // 描画
     void render(ImFont* font);
 
+    // 画面クリア（タブ切り替え用）
+    void clearScreen();
+
     // サイズ取得
     int cols() const { return m_cols; }
     int rows() const { return m_rows; }

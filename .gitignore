@@ -25,3 +25,11 @@ imgui.ini
 *.swp
 *.swo
 *~
+
+# 個人設定ファイル（~/.config/pbterm/に保存されるが念のため）
+profiles.json
+commands.json
+settings.json
+*.pem
+*.key
+id_rsa*
