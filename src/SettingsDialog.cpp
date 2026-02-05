@@ -29,6 +29,7 @@ static const Localization englishLocalization = {
     "Profile:",
     "(New)",
     "Save",
+    "Rename",
     "Delete",
     "Host:",
     "Port:",
@@ -42,6 +43,8 @@ static const Localization englishLocalization = {
     "Cancel",
     "Save Profile",
     "Enter profile name:",
+    "Rename Profile",
+    "Enter new profile name:",
 
     // 自動接続確認ダイアログ
     "Auto Connect Confirmation",
@@ -96,6 +99,7 @@ static const Localization japaneseLocalization = {
     "プロファイル:",
     "(新規)",
     "保存",
+    "名前変更",
     "削除",
     "ホスト:",
     "ポート:",
@@ -109,6 +113,8 @@ static const Localization japaneseLocalization = {
     "キャンセル",
     "プロファイル保存",
     "プロファイル名を入力:",
+    "プロファイル名変更",
+    "新しいプロファイル名を入力:",
 
     // 自動接続確認ダイアログ
     "自動接続の確認",

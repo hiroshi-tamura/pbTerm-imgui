@@ -133,6 +133,46 @@ void ConnectionDialog::render(bool* open) {
         ImGui::EndPopup();
     }
 
+    // Profile rename dialog
+    if (m_showRenameDialog) {
+        ImGui::OpenPopup(loc.dlgRenameProfile);
+        m_showRenameDialog = false;
+    }
+
+    if (ImGui::BeginPopupModal(loc.dlgRenameProfile, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("%s", loc.dlgRenameProfileName);
+        ImGui::InputText("##renameprofilename", m_renameProfileName, sizeof(m_renameProfileName));
+
+        if (ImGui::Button(loc.dlgSave, ImVec2(100, 0))) {
+            if (strlen(m_renameProfileName) > 0) {
+                const auto& profiles = m_profileManager->profiles();
+                if (m_selectedProfile > 0 &&
+                    m_selectedProfile <= static_cast<int>(profiles.size())) {
+                    std::string oldName = profiles[m_selectedProfile - 1].name;
+                    if (m_profileManager->renameProfile(oldName, m_renameProfileName)) {
+                        m_profileManager->save();
+                        // 再選択
+                        const auto& newProfiles = m_profileManager->profiles();
+                        for (size_t i = 0; i < newProfiles.size(); ++i) {
+                            if (newProfiles[i].name == m_renameProfileName) {
+                                m_selectedProfile = static_cast<int>(i) + 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                std::memset(m_renameProfileName, 0, sizeof(m_renameProfileName));
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(loc.dlgCancel, ImVec2(100, 0))) {
+            std::memset(m_renameProfileName, 0, sizeof(m_renameProfileName));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     // 自動接続切り替え確認ダイアログ
     if (m_showAutoConnectConfirm) {
         ImGui::OpenPopup(loc.dlgAutoConnectConfirm);
@@ -188,10 +228,40 @@ void ConnectionDialog::renderProfileSelector() {
 
     ImGui::SameLine();
     if (ImGui::Button(loc.dlgSave)) {
-        m_showSaveDialog = true;
+        if (m_selectedProfile > 0) {
+            const auto& profiles = m_profileManager->profiles();
+            if (m_selectedProfile <= static_cast<int>(profiles.size())) {
+                m_config.host = m_hostBuf;
+                m_config.port = m_port;
+                m_config.username = m_userBuf;
+                m_config.password = m_passBuf;
+                m_config.privateKeyPath = m_keyPathBuf;
+                m_config.useKeyAuth = m_useKeyAuth;
+                m_config.autoConnect = m_autoConnect;
+
+                m_profileManager->updateProfile(m_selectedProfile - 1, m_config);
+                if (m_autoConnect) {
+                    m_profileManager->setAutoConnectProfile(profiles[m_selectedProfile - 1].name);
+                } else {
+                    m_profileManager->clearAutoConnectFromProfile(profiles[m_selectedProfile - 1].name);
+                }
+                m_profileManager->save();
+            }
+        } else {
+            m_showSaveDialog = true;
+        }
     }
 
     if (m_selectedProfile > 0) {
+        ImGui::SameLine();
+        if (ImGui::Button(loc.dlgRename)) {
+            const auto& profiles = m_profileManager->profiles();
+            if (m_selectedProfile <= static_cast<int>(profiles.size())) {
+                std::strncpy(m_renameProfileName, profiles[m_selectedProfile - 1].name.c_str(),
+                             sizeof(m_renameProfileName) - 1);
+                m_showRenameDialog = true;
+            }
+        }
         ImGui::SameLine();
         if (ImGui::Button(loc.dlgDelete)) {
             m_profileManager->removeProfile(m_selectedProfile - 1);

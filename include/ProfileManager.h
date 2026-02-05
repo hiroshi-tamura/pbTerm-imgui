@@ -22,6 +22,7 @@ public:
     void addProfile(const std::string& name, const SshConfig& config);
     void removeProfile(int index);
     void updateProfile(int index, const SshConfig& config);
+    bool renameProfile(const std::string& oldName, const std::string& newName);
 
     // プロファイル取得
     const std::vector<Profile>& profiles() const { return m_profiles; }

@@ -57,6 +57,8 @@ private:
     int m_selectedProfile = 0;
     char m_newProfileName[64] = {};
     bool m_showSaveDialog = false;
+    bool m_showRenameDialog = false;
+    char m_renameProfileName[64] = {};
 
     // 自動接続切り替え確認ダイアログ
     bool m_showAutoConnectConfirm = false;

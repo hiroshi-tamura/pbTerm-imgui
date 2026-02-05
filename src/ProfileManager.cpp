@@ -45,6 +45,25 @@ void ProfileManager::updateProfile(int index, const SshConfig& config) {
     }
 }
 
+bool ProfileManager::renameProfile(const std::string& oldName, const std::string& newName) {
+    if (oldName.empty() || newName.empty() || oldName == newName) {
+        return false;
+    }
+    if (getProfile(newName)) {
+        return false;
+    }
+    for (auto& p : m_profiles) {
+        if (p.name == oldName) {
+            p.name = newName;
+            if (m_autoConnectName == oldName) {
+                m_autoConnectName = newName;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 const Profile* ProfileManager::getProfile(int index) const {
     if (index >= 0 && index < static_cast<int>(m_profiles.size())) {
         return &m_profiles[index];

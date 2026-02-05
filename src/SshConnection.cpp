@@ -263,7 +263,15 @@ void SshConnection::disconnect() {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     // すべてのチャンネルを閉じる
-    m_defaultChannel.reset();
+    if (m_defaultChannel) {
+        m_defaultChannel->close();
+        m_defaultChannel.reset();
+    }
+    for (auto& ch : m_channels) {
+        if (ch) {
+            ch->close();
+        }
+    }
     m_channels.clear();
 
     if (m_session) {

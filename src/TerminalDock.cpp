@@ -24,6 +24,14 @@ void TerminalDock::setTmuxController(TmuxController* tmux) {
 
 void TerminalDock::onConnected() {
     m_connected = true;
+    m_tabs.clear();
+    m_activeTab = -1;
+
+    if (m_channel) {
+        m_channel->close();
+        m_channel.reset();
+    }
+    m_terminal.reset();
 
     // tmuxが利用可能かチェック
     bool tmuxAvailable = (m_tmuxController && m_tmuxController->isAttached());

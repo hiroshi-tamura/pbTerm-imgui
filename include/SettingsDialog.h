@@ -55,6 +55,7 @@ struct Localization {
     const char* dlgProfile;
     const char* dlgNewProfile;
     const char* dlgSave;
+    const char* dlgRename;
     const char* dlgDelete;
     const char* dlgHost;
     const char* dlgPort;
@@ -68,6 +69,8 @@ struct Localization {
     const char* dlgCancel;
     const char* dlgSaveProfile;
     const char* dlgProfileName;
+    const char* dlgRenameProfile;
+    const char* dlgRenameProfileName;
 
     // 自動接続確認ダイアログ
     const char* dlgAutoConnectConfirm;
