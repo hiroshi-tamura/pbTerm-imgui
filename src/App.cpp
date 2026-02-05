@@ -438,13 +438,33 @@ void App::renderMenuBar() {
             ImGui::EndMenu();
         }
 
-        // 接続状態表示
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 120);
-        if (m_connected) {
-            ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "%s", loc.statusConnected);
-        } else {
-            ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "%s", loc.statusDisconnected);
-        }
+        // 接続状態表示（右寄せ + 色付きインジケータ）
+        const char* statusText = m_connected ? loc.statusConnected : loc.statusDisconnected;
+        ImVec2 textSize = ImGui::CalcTextSize(statusText);
+        float radius = 4.5f;
+        float padding = ImGui::GetStyle().ItemSpacing.x * 0.8f;
+        float rightPadding = 18.0f;
+        float totalWidth = radius * 2 + padding + textSize.x;
+
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - totalWidth - rightPadding);
+
+        ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+        ImU32 dotColor = m_connected
+            ? IM_COL32(60, 200, 120, 255)
+            : IM_COL32(220, 80, 80, 255);
+        ImVec4 textColor = m_connected
+            ? ImVec4(0.3f, 0.85f, 0.5f, 1.0f)
+            : ImVec4(0.85f, 0.35f, 0.35f, 1.0f);
+
+        float lineH = ImGui::GetTextLineHeight();
+        ImGui::GetWindowDrawList()->AddCircleFilled(
+            ImVec2(cursorPos.x + radius + 7.0f, cursorPos.y + lineH * 0.5f + 4.0f),
+            radius,
+            dotColor
+        );
+        ImGui::Dummy(ImVec2(radius * 2 + padding, lineH));
+        ImGui::SameLine();
+        ImGui::TextColored(textColor, "%s", statusText);
 
         ImGui::EndMenuBar();
     }
