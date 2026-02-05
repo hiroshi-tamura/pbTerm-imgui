@@ -1,6 +1,25 @@
-# pbTerm
+<p align="center">
+  <img src="resources/icon/pbTerm.png" alt="pbTerm Logo" width="128">
+</p>
 
-A lightweight, high-performance SSH terminal client for macOS built with Dear ImGui.
+<h1 align="center">pbTerm</h1>
+
+<p align="center">
+  <strong>A lightweight, high-performance SSH terminal client for macOS built with Dear ImGui</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS-blue?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/badge/C%2B%2B-17-blue?style=flat-square" alt="C++17">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/UI-English%20%7C%20日本語-orange?style=flat-square" alt="Languages">
+</p>
+
+<p align="center">
+  <img src="docs/screenshot.png" alt="pbTerm Screenshot" width="800">
+</p>
+
+---
 
 ## Overview
 
