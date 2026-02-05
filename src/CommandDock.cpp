@@ -74,7 +74,7 @@ void CommandDock::renderCommandList() {
     const auto& loc = getLoc(m_language);
 
     // ツールバー
-    if (ImGui::Button("+", ImVec2(30, 0))) {
+    if (ImGui::Button("+", ImVec2(0, 0))) {
         m_showAddDialog = true;
         std::memset(m_nameBuf, 0, sizeof(m_nameBuf));
         std::memset(m_commandBuf, 0, sizeof(m_commandBuf));
