@@ -63,6 +63,18 @@ private:
     bool m_showTerminal = true;
     bool m_showCommands = true;
     bool m_showFolders = true;
+
+    // アコーディオン状態
+    bool m_commandsCollapsed = false;
+    bool m_foldersCollapsed = false;
+    float m_commandsExpandedWidth = 280.0f;
+    float m_foldersExpandedWidth = 280.0f;
+    float m_commandsExpandRequestWidth = 0.0f;
+    float m_foldersExpandRequestWidth = 0.0f;
+
+    ImGuiID m_dockspaceId = 0;
+    ImGuiID m_foldersDockNodeId = 0;
+    ImGuiID m_commandsDockNodeId = 0;
     bool m_showConnectionDialog = false;
     bool m_showSettings = false;
     bool m_connected = false;

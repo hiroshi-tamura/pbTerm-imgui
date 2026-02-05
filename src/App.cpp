@@ -25,6 +25,113 @@
 
 namespace pbterm {
 
+namespace {
+void renderAccordionControls(const char* id, ImGuiID dockNodeId, bool& collapsed, float& expandedWidth, float& expandRequestWidth) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    if (!window) return;
+
+    const float edgeHotZone = 20.0f;
+    const float collapsedWidth = 28.0f;
+    ImVec2 winPos = ImGui::GetWindowPos();
+    ImVec2 winSize = ImGui::GetWindowSize();
+    ImVec2 mousePos = ImGui::GetMousePos();
+
+    // サイズ制御
+    if (collapsed) {
+        ImGui::SetWindowSize(ImVec2(collapsedWidth, 0.0f), ImGuiCond_Always);
+        winSize = ImGui::GetWindowSize();
+    }
+
+    // ドッキングされている場合はノードサイズを直接調整
+    ImGuiID dockId = (dockNodeId != 0) ? dockNodeId : window->DockId;
+    if (dockId != 0) {
+        ImGuiDockNode* node = ImGui::DockBuilderGetNode(dockId);
+        if (node) {
+            float targetWidth = collapsed ? collapsedWidth : winSize.x;
+            if (!collapsed && expandRequestWidth > 0.0f) {
+                targetWidth = expandRequestWidth;
+            }
+            node->Size.x = targetWidth;
+            node->SizeRef.x = targetWidth;
+            node->WantLockSizeOnce = true;
+            ImGui::DockBuilderSetNodeSize(dockId, ImVec2(targetWidth, node->Size.y));
+        }
+    }
+
+    bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+    bool nearLeft = hovered && mousePos.x <= (winPos.x + edgeHotZone);
+    bool nearRight = hovered && mousePos.x >= (winPos.x + winSize.x - edgeHotZone);
+
+    if (!collapsed) {
+        if (nearLeft || nearRight) {
+            ImVec2 btnPos(
+                nearLeft ? winPos.x + 2.0f : winPos.x + winSize.x - 18.0f,
+                winPos.y + winSize.y * 0.5f - 10.0f
+            );
+            ImVec2 btnSize(16.0f, 20.0f);
+            ImRect btnRect(btnPos, ImVec2(btnPos.x + btnSize.x, btnPos.y + btnSize.y));
+            bool btnHovered = btnRect.Contains(mousePos);
+            if (nearLeft || nearRight || btnHovered) {
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    btnPos, ImVec2(btnPos.x + btnSize.x, btnPos.y + btnSize.y),
+                    IM_COL32(40, 40, 40, 180), 3.0f
+                );
+                ImGui::GetWindowDrawList()->AddText(
+                    ImVec2(btnPos.x + 4.0f, btnPos.y + 2.0f),
+                    IM_COL32(220, 220, 220, 255),
+                    nearLeft ? "<" : ">"
+                );
+
+                if (btnRect.Contains(mousePos) && ImGui::IsMouseClicked(0)) {
+                    expandedWidth = winSize.x;
+                    collapsed = true;
+                }
+            }
+        }
+    } else {
+        // 折りたたみ時の展開ボタン
+        if (hovered) {
+            ImVec2 btnPos(
+                winPos.x + 4.0f,
+                winPos.y + winSize.y * 0.5f - 10.0f
+            );
+            ImVec2 btnSize(16.0f, 20.0f);
+            ImRect btnRect(btnPos, ImVec2(btnPos.x + btnSize.x, btnPos.y + btnSize.y));
+            bool btnHovered = btnRect.Contains(mousePos);
+            if (btnHovered || mousePos.x <= winPos.x + edgeHotZone) {
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    btnPos, ImVec2(btnPos.x + btnSize.x, btnPos.y + btnSize.y),
+                    IM_COL32(40, 40, 40, 180), 3.0f
+                );
+                ImGui::GetWindowDrawList()->AddText(
+                    ImVec2(btnPos.x + 4.0f, btnPos.y + 2.0f),
+                    IM_COL32(220, 220, 220, 255),
+                    ">"
+                );
+
+                if (btnRect.Contains(mousePos) && ImGui::IsMouseClicked(0)) {
+                    collapsed = false;
+                    expandRequestWidth = expandedWidth;
+                    // 即時にドック幅を戻す
+                    ImGuiID dockId = window->DockId;
+                    if (dockId != 0) {
+                        ImGuiDockNode* node = ImGui::DockBuilderGetNode(dockId);
+                        if (node) {
+                            float target = (expandedWidth > 0.0f) ? expandedWidth : 280.0f;
+                            node->Size.x = target;
+                            node->SizeRef.x = target;
+                        }
+                    } else {
+                        ImGui::SetWindowSize(ImVec2(expandedWidth, 0.0f), ImGuiCond_Always);
+                    }
+                }
+            }
+        }
+    }
+
+}
+} // namespace
+
 App::App() = default;
 
 App::~App() = default;
@@ -381,6 +488,7 @@ void App::setupDocking() {
 
     // ドッキングスペース
     ImGuiID dockspaceId = ImGui::GetID("MainDockSpace");
+    m_dockspaceId = dockspaceId;
 
     // imgui.iniが存在しない場合のみ初回レイアウトを構築
     static bool firstTime = true;
@@ -392,8 +500,21 @@ void App::setupDocking() {
             ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
-            // Terminalウィンドウをドッキングスペースにドッキング
-            ImGui::DockBuilderDockWindow("Terminal", dockspaceId);
+            ImGuiID dockLeft = 0;
+            ImGuiID dockRight = 0;
+            ImGuiID dockMain = dockspaceId;
+
+            // 左右に分割
+            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, 0.20f, &dockLeft, &dockMain);
+            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.20f, &dockRight, &dockMain);
+
+            m_foldersDockNodeId = dockLeft;
+            m_commandsDockNodeId = dockRight;
+
+            // ドッキング
+            ImGui::DockBuilderDockWindow("###Folders", dockLeft);
+            ImGui::DockBuilderDockWindow("###Commands", dockRight);
+            ImGui::DockBuilderDockWindow("###Terminal", dockMain);
 
             ImGui::DockBuilderFinish(dockspaceId);
         }
@@ -488,9 +609,18 @@ void App::renderUI() {
     if (m_showCommands) {
         char title[128];
         snprintf(title, sizeof(title), "%s###Commands", loc.menuCommands);
+        if (m_commandsCollapsed) {
+            ImGui::SetNextWindowSize(ImVec2(28.0f, 0.0f), ImGuiCond_Always);
+        } else if (m_commandsExpandRequestWidth > 0.0f) {
+            ImGui::SetNextWindowSize(ImVec2(m_commandsExpandRequestWidth, 0.0f), ImGuiCond_Always);
+            m_commandsExpandRequestWidth = 0.0f;
+        }
         ImGui::Begin(title, &m_showCommands);
-        m_commandDock->setLanguage(m_appSettings.language);
-        m_commandDock->render();
+        renderAccordionControls("cmdDock", m_commandsDockNodeId, m_commandsCollapsed, m_commandsExpandedWidth, m_commandsExpandRequestWidth);
+        if (!m_commandsCollapsed) {
+            m_commandDock->setLanguage(m_appSettings.language);
+            m_commandDock->render();
+        }
         ImGui::End();
     }
 
@@ -498,9 +628,18 @@ void App::renderUI() {
     if (m_showFolders) {
         char title[128];
         snprintf(title, sizeof(title), "%s###Folders", loc.menuFolders);
+        if (m_foldersCollapsed) {
+            ImGui::SetNextWindowSize(ImVec2(28.0f, 0.0f), ImGuiCond_Always);
+        } else if (m_foldersExpandRequestWidth > 0.0f) {
+            ImGui::SetNextWindowSize(ImVec2(m_foldersExpandRequestWidth, 0.0f), ImGuiCond_Always);
+            m_foldersExpandRequestWidth = 0.0f;
+        }
         ImGui::Begin(title, &m_showFolders);
-        m_folderTreeDock->setLanguage(m_appSettings.language);
-        m_folderTreeDock->render();
+        renderAccordionControls("folderDock", m_foldersDockNodeId, m_foldersCollapsed, m_foldersExpandedWidth, m_foldersExpandRequestWidth);
+        if (!m_foldersCollapsed) {
+            m_folderTreeDock->setLanguage(m_appSettings.language);
+            m_folderTreeDock->render();
+        }
         ImGui::End();
     }
 
