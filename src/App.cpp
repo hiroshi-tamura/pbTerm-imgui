@@ -290,12 +290,8 @@ void App::setupImGui() {
     // IniFilenameは文字列のポインタを保持する必要があるため、メンバ変数を使用
     io.IniFilename = m_imguiIniPath.c_str();
 
-    // ダークテーマ
-    ImGui::StyleColorsDark();
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.WindowRounding = 4.0f;
-    style.FrameRounding = 2.0f;
-    style.TabRounding = 4.0f;
+    // UIテーマを適用（設定から読み込んだテーマを使用）
+    applyUITheme(m_appSettings.uiTheme);
 
     // バックエンド初期化
     ImGui_ImplGlfw_InitForOpenGL(m_window, true);
@@ -429,11 +425,16 @@ void App::onSettingsApplied(const AppSettings& settings) {
     bool needReload = (m_appSettings.fontPath != settings.fontPath ||
                        m_appSettings.fontSize != settings.fontSize);
 
-    // カラーテーマ変更
+    // カラーテーマ変更（ターミナル）
     if (m_appSettings.colorTheme != settings.colorTheme) {
         if (m_terminalDock) {
             m_terminalDock->setColorTheme(settings.colorTheme);
         }
+    }
+
+    // UIテーマ変更（ImGui）
+    if (m_appSettings.uiTheme != settings.uiTheme) {
+        applyUITheme(settings.uiTheme);
     }
 
     m_appSettings = settings;

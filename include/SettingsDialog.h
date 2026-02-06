@@ -15,8 +15,11 @@ struct AppSettings {
     std::string fontPath = "resources/fonts/HackGenConsole-Regular.ttf";
     float fontSize = 18.0f;
 
-    // カラーテーマ
+    // カラーテーマ（ターミナル）
     std::string colorTheme = "default";
+
+    // UIテーマ（ImGui）
+    std::string uiTheme = "dark";
 
     // ウィンドウ設定
     int windowX = -1;       // -1 = 中央配置
@@ -87,6 +90,7 @@ struct Localization {
     const char* dlgFont;
     const char* dlgFontSize;
     const char* dlgColorTheme;
+    const char* dlgUITheme;
     const char* dlgPreview;
     const char* dlgOK;
     const char* dlgApply;
@@ -116,6 +120,16 @@ struct Localization {
 // 言語取得
 const Localization& getLocalization(int language);
 
+// UIテーマ情報
+struct UIThemeInfo {
+    const char* id;
+    const char* name;
+};
+
+// UIテーマ関連
+const std::vector<UIThemeInfo>& getAvailableUIThemes();
+void applyUITheme(const std::string& themeId);
+
 // 設定ダイアログ
 class SettingsDialog {
 public:
@@ -134,6 +148,7 @@ private:
     void renderLanguageSettings();
     void renderFontSettings();
     void renderColorThemeSettings();
+    void renderUIThemeSettings();
     void renderThemePreview(float width, float height);
     void renderButtons(bool* open);
 
@@ -144,7 +159,8 @@ private:
     int m_selectedLanguage = 0;
     int m_selectedFont = 0;
     float m_fontSize = 18.0f;
-    int m_selectedTheme = 0;
+    int m_selectedTheme = 0;      // ターミナルカラーテーマ
+    int m_selectedUITheme = 0;    // ImGui UIテーマ
 
     // 利用可能なフォント
     std::vector<std::string> m_availableFonts;
