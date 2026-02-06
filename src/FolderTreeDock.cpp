@@ -13,6 +13,10 @@
 #include <iostream>
 #include <cstdlib>
 
+#ifdef __APPLE__
+#include "DragDropHelper.h"
+#endif
+
 namespace pbterm {
 
 namespace {
@@ -377,33 +381,41 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const
             ImGui::EndDragDropTarget();
         }
 
-        // ホバー時にドロップターゲットとしてマーク＆ハイライト
+        // ホバー時にドロップターゲットとしてマーク
         if (ImGui::IsItemHovered()) {
             m_dropTargetPath = node.path;
 
-            // ドロップターゲットの背景をハイライト
-            ImVec2 itemMin = ImGui::GetItemRectMin();
-            ImVec2 itemMax = ImGui::GetItemRectMax();
-            // 幅を広げてフォルダ名全体をカバー
-            itemMax.x = itemMin.x + ImGui::GetContentRegionAvail().x + 50.0f;
+            // 外部ドラッグ中のみハイライト表示
+#ifdef __APPLE__
+            bool showHighlight = isExternalDragInProgress();
+#else
+            bool showHighlight = false;  // 他のプラットフォームでは要実装
+#endif
+            if (showHighlight) {
+                // ドロップターゲットの背景をハイライト
+                ImVec2 itemMin = ImGui::GetItemRectMin();
+                ImVec2 itemMax = ImGui::GetItemRectMax();
+                // 幅を広げてフォルダ名全体をカバー
+                itemMax.x = itemMin.x + ImGui::GetContentRegionAvail().x + 50.0f;
 
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            ImVec4 highlightColor = ImVec4(0.3f, 0.6f, 0.9f, 0.35f);
-            drawList->AddRectFilled(
-                itemMin,
-                itemMax,
-                ImGui::ColorConvertFloat4ToU32(highlightColor),
-                3.0f
-            );
-            // 枠線
-            drawList->AddRect(
-                itemMin,
-                itemMax,
-                ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.7f, 1.0f, 0.9f)),
-                3.0f,
-                0,
-                2.0f
-            );
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                ImVec4 highlightColor = ImVec4(0.3f, 0.6f, 0.9f, 0.35f);
+                drawList->AddRectFilled(
+                    itemMin,
+                    itemMax,
+                    ImGui::ColorConvertFloat4ToU32(highlightColor),
+                    3.0f
+                );
+                // 枠線
+                drawList->AddRect(
+                    itemMin,
+                    itemMax,
+                    ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.7f, 1.0f, 0.9f)),
+                    3.0f,
+                    0,
+                    2.0f
+                );
+            }
         }
     }
 

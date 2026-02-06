@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(pbTerm VERSION 1.0.0 LANGUAGES CXX C)
+project(pbTerm VERSION 1.0.0 LANGUAGES CXX C OBJCXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,6 +56,13 @@ set(APP_SOURCES
     src/FolderTreeDock.cpp
 )
 
+# macOSプラットフォーム固有ソース
+if(APPLE)
+    list(APPEND APP_SOURCES
+        src/platform/DragDropHelper_mac.mm
+    )
+endif()
+
 # macOS .appバンドル
 if(APPLE)
     set(MACOSX_BUNDLE_BUNDLE_NAME "pbTerm")
@@ -77,6 +84,7 @@ endif()
 
 target_include_directories(pbTerm PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/platform
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${GLFW_INCLUDE_DIR}
