@@ -344,45 +344,6 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const
         isRoot = (node.path.size() <= 3 && node.path.find(':') != std::string::npos);
     }
 
-    // フォルダのドロップターゲットハイライト（外部ドラッグ中のみ）
-    // 外部からのドラッグ中はマウスボタンが押されている状態
-    // ImGuiの内部ドラッグ中でない場合にハイライト表示
-    bool isExternalDragging = ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
-                               ImGui::GetDragDropPayload() == nullptr &&
-                               !ImGui::IsAnyItemActive();
-
-    if (node.isDir && isExternalDragging) {
-        ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-        float itemHeight = ImGui::GetTextLineHeightWithSpacing();
-        float itemWidth = ImGui::GetContentRegionAvail().x;
-        ImVec2 mousePos = ImGui::GetMousePos();
-
-        // マウスがこのアイテムの領域内にあるかチェック
-        if (mousePos.x >= cursorPos.x && mousePos.x <= cursorPos.x + itemWidth &&
-            mousePos.y >= cursorPos.y && mousePos.y <= cursorPos.y + itemHeight) {
-            m_dropTargetPath = node.path;
-
-            // ドロップターゲットの背景をハイライト
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            ImVec4 highlightColor = ImVec4(0.3f, 0.6f, 0.9f, 0.4f);
-            drawList->AddRectFilled(
-                cursorPos,
-                ImVec2(cursorPos.x + itemWidth, cursorPos.y + itemHeight),
-                ImGui::ColorConvertFloat4ToU32(highlightColor),
-                3.0f
-            );
-            // 枠線も追加
-            drawList->AddRect(
-                cursorPos,
-                ImVec2(cursorPos.x + itemWidth, cursorPos.y + itemHeight),
-                ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.7f, 1.0f, 0.8f)),
-                3.0f,
-                0,
-                2.0f
-            );
-        }
-    }
-
     bool open = ImGui::TreeNodeEx("##node",
                                   flags | ImGuiTreeNodeFlags_AllowOverlap,
                                   "");
@@ -416,9 +377,33 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const
             ImGui::EndDragDropTarget();
         }
 
-        // ホバー時にドロップターゲットとしてマーク
+        // ホバー時にドロップターゲットとしてマーク＆ハイライト
         if (ImGui::IsItemHovered()) {
             m_dropTargetPath = node.path;
+
+            // ドロップターゲットの背景をハイライト
+            ImVec2 itemMin = ImGui::GetItemRectMin();
+            ImVec2 itemMax = ImGui::GetItemRectMax();
+            // 幅を広げてフォルダ名全体をカバー
+            itemMax.x = itemMin.x + ImGui::GetContentRegionAvail().x + 50.0f;
+
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec4 highlightColor = ImVec4(0.3f, 0.6f, 0.9f, 0.35f);
+            drawList->AddRectFilled(
+                itemMin,
+                itemMax,
+                ImGui::ColorConvertFloat4ToU32(highlightColor),
+                3.0f
+            );
+            // 枠線
+            drawList->AddRect(
+                itemMin,
+                itemMax,
+                ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.7f, 1.0f, 0.9f)),
+                3.0f,
+                0,
+                2.0f
+            );
         }
     }
 
