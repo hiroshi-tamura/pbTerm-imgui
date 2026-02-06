@@ -15,6 +15,9 @@ struct AppSettings {
     std::string fontPath = "resources/fonts/HackGenConsole-Regular.ttf";
     float fontSize = 18.0f;
 
+    // カラーテーマ
+    std::string colorTheme = "default";
+
     // ウィンドウ設定
     int windowX = -1;       // -1 = 中央配置
     int windowY = -1;
@@ -83,6 +86,8 @@ struct Localization {
     const char* dlgLanguage;
     const char* dlgFont;
     const char* dlgFontSize;
+    const char* dlgColorTheme;
+    const char* dlgPreview;
     const char* dlgOK;
     const char* dlgApply;
 
@@ -128,6 +133,8 @@ public:
 private:
     void renderLanguageSettings();
     void renderFontSettings();
+    void renderColorThemeSettings();
+    void renderThemePreview(float width, float height);
     void renderButtons(bool* open);
 
     AppSettings m_settings;
@@ -137,6 +144,7 @@ private:
     int m_selectedLanguage = 0;
     int m_selectedFont = 0;
     float m_fontSize = 18.0f;
+    int m_selectedTheme = 0;
 
     // 利用可能なフォント
     std::vector<std::string> m_availableFonts;

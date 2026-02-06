@@ -61,8 +61,8 @@ public:
     // セッションにアタッチしているか
     bool isAttached() const { return m_attached; }
 
-    // ウィンドウ操作
-    bool createWindow(const std::string& name = "");
+    // ウィンドウ操作（createWindowは作成されたウィンドウのインデックスを返す、失敗時は-1）
+    int createWindow(const std::string& name = "");
     bool selectWindow(int index);
     bool closeWindow(int index);
     bool renameWindow(int index, const std::string& name);

@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "Terminal.h"
 #include "imgui.h"
 #include <fstream>
 #include <filesystem>
@@ -57,6 +58,8 @@ static const Localization englishLocalization = {
     "Language",
     "Font",
     "Font Size",
+    "Color Theme",
+    "Preview",
     "OK",
     "Apply",
 
@@ -132,6 +135,8 @@ static const Localization japaneseLocalization = {
     "言語",
     "フォント",
     "フォントサイズ",
+    "カラーテーマ",
+    "プレビュー",
     "OK",
     "適用",
 
@@ -186,6 +191,7 @@ void AppSettings::save() {
     file << "window_width=" << windowWidth << "\n";
     file << "window_height=" << windowHeight << "\n";
     file << "window_maximized=" << (windowMaximized ? "1" : "0") << "\n";
+    file << "color_theme=" << colorTheme << "\n";
 
     std::cout << "Settings saved: " << path << std::endl;
 }
@@ -228,6 +234,8 @@ void AppSettings::load() {
             windowHeight = std::stoi(value);
         } else if (key == "window_maximized") {
             windowMaximized = (value == "1");
+        } else if (key == "color_theme") {
+            colorTheme = value;
         }
     }
 
@@ -273,6 +281,16 @@ void SettingsDialog::setSettings(const AppSettings& settings) {
             break;
         }
     }
+
+    // テーマインデックスを検索
+    const auto& themes = getAvailableThemes();
+    m_selectedTheme = 0;
+    for (size_t i = 0; i < themes.size(); ++i) {
+        if (themes[i].id == settings.colorTheme) {
+            m_selectedTheme = static_cast<int>(i);
+            break;
+        }
+    }
 }
 
 void SettingsDialog::render(bool* open) {
@@ -280,7 +298,7 @@ void SettingsDialog::render(bool* open) {
 
     const Localization& loc = getLocalization(m_settings.language);
 
-    ImGui::SetNextWindowSize(ImVec2(400, 250), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(450, 450), ImGuiCond_FirstUseEver);
 
     // ドッキング不可
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
@@ -289,6 +307,8 @@ void SettingsDialog::render(bool* open) {
         renderLanguageSettings();
         ImGui::Separator();
         renderFontSettings();
+        ImGui::Separator();
+        renderColorThemeSettings();
         ImGui::Separator();
         renderButtons(open);
     }
@@ -328,6 +348,123 @@ void SettingsDialog::renderFontSettings() {
     ImGui::SliderFloat("##fontsize", &m_fontSize, 12.0f, 32.0f, "%.0f");
 }
 
+void SettingsDialog::renderColorThemeSettings() {
+    const Localization& loc = getLocalization(m_settings.language);
+    const auto& themes = getAvailableThemes();
+
+    // テーマ選択
+    ImGui::Text("%s", loc.dlgColorTheme);
+    ImGui::SameLine(120);
+
+    std::vector<const char*> themeNames;
+    for (const auto& t : themes) {
+        themeNames.push_back(t.name.c_str());
+    }
+
+    ImGui::SetNextItemWidth(200);
+    ImGui::Combo("##colorTheme", &m_selectedTheme, themeNames.data(), static_cast<int>(themeNames.size()));
+
+    // プレビュー
+    ImGui::Spacing();
+    ImGui::Text("%s:", loc.dlgPreview);
+
+    // プレビュー描画エリア
+    float previewWidth = ImGui::GetContentRegionAvail().x - 10;
+    float previewHeight = 120;
+    renderThemePreview(previewWidth, previewHeight);
+}
+
+void SettingsDialog::renderThemePreview(float width, float height) {
+    const auto& themes = getAvailableThemes();
+    if (m_selectedTheme < 0 || m_selectedTheme >= static_cast<int>(themes.size())) {
+        return;
+    }
+
+    const TerminalColorTheme& theme = themes[m_selectedTheme];
+
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+
+    // 背景
+    drawList->AddRectFilled(
+        pos,
+        ImVec2(pos.x + width, pos.y + height),
+        theme.background.toImU32(),
+        4.0f
+    );
+
+    // 枠線
+    drawList->AddRect(
+        pos,
+        ImVec2(pos.x + width, pos.y + height),
+        IM_COL32(100, 100, 100, 200),
+        4.0f
+    );
+
+    // プロンプトのサンプルテキスト
+    float lineHeight = 16.0f;
+    float x = pos.x + 10;
+    float y = pos.y + 10;
+
+    // user@host:~$ の部分
+    drawList->AddText(ImVec2(x, y), theme.colors[2].toImU32(), "user");  // 緑
+    drawList->AddText(ImVec2(x + 28, y), theme.foreground.toImU32(), "@");
+    drawList->AddText(ImVec2(x + 38, y), theme.colors[6].toImU32(), "host");  // シアン
+    drawList->AddText(ImVec2(x + 66, y), theme.foreground.toImU32(), ":~$ ");
+    drawList->AddText(ImVec2(x + 94, y), theme.foreground.toImU32(), "ls -la");
+
+    y += lineHeight;
+
+    // lsコマンドの出力例
+    drawList->AddText(ImVec2(x, y), theme.colors[4].toImU32(), "drwxr-xr-x");  // 青
+    drawList->AddText(ImVec2(x + 80, y), theme.foreground.toImU32(), "  Documents/");
+
+    y += lineHeight;
+
+    drawList->AddText(ImVec2(x, y), theme.colors[2].toImU32(), "-rwxr-xr-x");  // 緑
+    drawList->AddText(ImVec2(x + 80, y), theme.foreground.toImU32(), "  script.sh");
+
+    y += lineHeight + 8;
+
+    // ANSI 16色パレット表示
+    float boxSize = 14.0f;
+    float spacing = 2.0f;
+
+    // 通常色 (0-7)
+    for (int i = 0; i < 8; ++i) {
+        ImVec2 boxPos(x + i * (boxSize + spacing), y);
+        drawList->AddRectFilled(
+            boxPos,
+            ImVec2(boxPos.x + boxSize, boxPos.y + boxSize),
+            theme.colors[i].toImU32()
+        );
+    }
+
+    y += boxSize + spacing;
+
+    // 明るい色 (8-15)
+    for (int i = 8; i < 16; ++i) {
+        ImVec2 boxPos(x + (i - 8) * (boxSize + spacing), y);
+        drawList->AddRectFilled(
+            boxPos,
+            ImVec2(boxPos.x + boxSize, boxPos.y + boxSize),
+            theme.colors[i].toImU32()
+        );
+    }
+
+    // カーソル表示
+    float cursorX = pos.x + width - 40;
+    float cursorY = pos.y + 10;
+    drawList->AddRectFilled(
+        ImVec2(cursorX, cursorY),
+        ImVec2(cursorX + 8, cursorY + lineHeight),
+        IM_COL32(theme.cursor.r, theme.cursor.g, theme.cursor.b, 180)
+    );
+
+    // プレビューエリア用のダミー
+    ImGui::Dummy(ImVec2(width, height));
+}
+
 void SettingsDialog::renderButtons(bool* open) {
     const Localization& loc = getLocalization(m_settings.language);
 
@@ -346,6 +483,12 @@ void SettingsDialog::renderButtons(bool* open) {
 
         if (m_selectedFont >= 0 && m_selectedFont < static_cast<int>(m_availableFonts.size())) {
             m_settings.fontPath = "resources/fonts/" + m_availableFonts[m_selectedFont];
+        }
+
+        // テーマを更新
+        const auto& themes = getAvailableThemes();
+        if (m_selectedTheme >= 0 && m_selectedTheme < static_cast<int>(themes.size())) {
+            m_settings.colorTheme = themes[m_selectedTheme].id;
         }
 
         m_settings.save();
@@ -367,6 +510,12 @@ void SettingsDialog::renderButtons(bool* open) {
 
         if (m_selectedFont >= 0 && m_selectedFont < static_cast<int>(m_availableFonts.size())) {
             m_settings.fontPath = "resources/fonts/" + m_availableFonts[m_selectedFont];
+        }
+
+        // テーマを更新
+        const auto& themes = getAvailableThemes();
+        if (m_selectedTheme >= 0 && m_selectedTheme < static_cast<int>(themes.size())) {
+            m_settings.colorTheme = themes[m_selectedTheme].id;
         }
 
         m_settings.save();

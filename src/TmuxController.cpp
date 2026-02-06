@@ -122,19 +122,33 @@ void TmuxController::detach() {
     m_windows.clear();
 }
 
-bool TmuxController::createWindow(const std::string& name) {
+int TmuxController::createWindow(const std::string& name) {
     if (!m_attached || !m_controlChannelOpen) {
-        return false;
+        return -1;
     }
 
+    // -P オプションで作成されたウィンドウの情報を取得
     std::string cmd;
     if (name.empty()) {
-        cmd = m_tmuxPath + " new-window -t " + m_sessionName;
+        cmd = m_tmuxPath + " new-window -P -t " + m_sessionName + " -F '#{window_index}'";
     } else {
-        cmd = m_tmuxPath + " new-window -t " + m_sessionName + " -n '" + name + "'";
+        cmd = m_tmuxPath + " new-window -P -t " + m_sessionName + " -n '" + name + "' -F '#{window_index}'";
     }
 
     std::string result = executeCommand(cmd);
+
+    // 結果から新しいウィンドウのインデックスを取得
+    int newWindowIndex = -1;
+    try {
+        // 改行や空白を除去
+        result.erase(result.find_last_not_of(" \n\r\t") + 1);
+        if (!result.empty()) {
+            newWindowIndex = std::stoi(result);
+        }
+    } catch (...) {
+        std::cerr << "TmuxController: ウィンドウインデックスの解析失敗: [" << result << "]" << std::endl;
+        newWindowIndex = -1;
+    }
 
     // ウィンドウ一覧を更新
     m_windows = listWindows();
@@ -143,8 +157,8 @@ bool TmuxController::createWindow(const std::string& name) {
         m_onWindowListChanged(m_windows);
     }
 
-    std::cout << "TmuxController: 新しいウィンドウを作成しました" << std::endl;
-    return true;
+    std::cout << "TmuxController: 新しいウィンドウを作成しました (index=" << newWindowIndex << ")" << std::endl;
+    return newWindowIndex;
 }
 
 bool TmuxController::selectWindow(int index) {

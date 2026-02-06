@@ -11,7 +11,7 @@ class ProfileManager;
 // 接続設定ダイアログ
 class ConnectionDialog {
 public:
-    using ConnectCallback = std::function<void(const SshConfig&)>;
+    using ConnectCallback = std::function<void(const SshConfig&, const std::string& profileName)>;
 
     ConnectionDialog(ProfileManager* profileManager);
     ~ConnectionDialog() = default;

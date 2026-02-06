@@ -26,6 +26,21 @@ struct TerminalColor {
     }
 };
 
+// カラーテーマ定義
+struct TerminalColorTheme {
+    std::string name;           // 表示名
+    std::string id;             // 保存用ID
+    TerminalColor background;   // 背景色
+    TerminalColor foreground;   // 前景色（デフォルト）
+    TerminalColor cursor;       // カーソル色
+    TerminalColor selection;    // 選択範囲色
+    TerminalColor colors[16];   // ANSI 16色パレット
+};
+
+// 利用可能なテーマを取得
+const std::vector<TerminalColorTheme>& getAvailableThemes();
+const TerminalColorTheme* getThemeById(const std::string& id);
+
 // ターミナルセル
 struct TerminalCell {
     std::string text;
@@ -62,6 +77,10 @@ public:
 
     // 描画
     void render(ImFont* font);
+
+    // カラーテーマ設定
+    void setColorTheme(const std::string& themeId);
+    const TerminalColorTheme& getColorTheme() const { return m_colorTheme; }
 
     // 画面クリア（タブ切り替え用）
     void clearScreen();
@@ -106,6 +125,9 @@ private:
     std::mutex m_mutex;
 
     std::string m_currentDirectory;
+
+    // カラーテーマ
+    TerminalColorTheme m_colorTheme;
 
     // スクロールバック
     std::vector<std::vector<TerminalCell>> m_scrollback;

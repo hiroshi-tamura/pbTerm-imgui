@@ -38,6 +38,9 @@ public:
     // 言語設定
     void setLanguage(int language) { m_language = language; }
 
+    // カラーテーマ設定
+    void setColorTheme(const std::string& themeId);
+
     // 接続状態
     void onConnected();
     void onDisconnected();

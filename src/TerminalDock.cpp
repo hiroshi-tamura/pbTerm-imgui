@@ -374,36 +374,42 @@ int TerminalDock::addTab(const std::string& name) {
     // tmuxコントローラでウィンドウを作成
     if (m_tmuxController && m_tmuxController->isAttached()) {
         std::string windowName = name.empty() ? "" : name;
-        if (!m_tmuxController->createWindow(windowName)) {
+        int newWindowIndex = m_tmuxController->createWindow(windowName);
+        if (newWindowIndex < 0) {
             std::cerr << "タブ追加失敗: tmuxウィンドウ作成失敗" << std::endl;
             return -1;
         }
 
-        // 新しいウィンドウ一覧を取得
+        // 新しいウィンドウ一覧を取得して、作成されたウィンドウを探す
         auto windows = m_tmuxController->listWindows();
-        if (windows.empty()) {
-            std::cerr << "タブ追加失敗: ウィンドウ一覧取得失敗" << std::endl;
-            return -1;
+        const TmuxWindow* newWindow = nullptr;
+        for (const auto& win : windows) {
+            if (win.index == newWindowIndex) {
+                newWindow = &win;
+                break;
+            }
         }
 
-        // 最新のウィンドウ（最後に作成されたもの）を取得
-        const auto& newWindow = windows.back();
+        if (!newWindow) {
+            std::cerr << "タブ追加失敗: 作成されたウィンドウが見つかりません (index=" << newWindowIndex << ")" << std::endl;
+            return -1;
+        }
 
         // タブ情報を追加
         TerminalTabInfo tab;
         tab.id = m_nextTabId++;
-        tab.tmuxWindowIndex = newWindow.index;
-        tab.name = newWindow.name.empty() ? ("Window " + std::to_string(newWindow.index)) : newWindow.name;
-        tab.currentPath = newWindow.currentPath;
+        tab.tmuxWindowIndex = newWindow->index;
+        tab.name = newWindow->name.empty() ? ("Window " + std::to_string(newWindow->index)) : newWindow->name;
+        tab.currentPath = newWindow->currentPath;
         m_tabs.push_back(tab);
 
         // 新しいタブをアクティブに
         m_activeTab = static_cast<int>(m_tabs.size()) - 1;
 
         // tmuxウィンドウを選択
-        selectTmuxWindow(newWindow.index);
+        selectTmuxWindow(newWindow->index);
 
-        std::cout << "タブ追加成功: " << tab.name << " (tmux window " << newWindow.index << ")" << std::endl;
+        std::cout << "タブ追加成功: " << tab.name << " (tmux window " << newWindow->index << ")" << std::endl;
         std::cout << "m_terminal=" << (m_terminal ? "OK" : "NULL") << " m_channel=" << (m_channel ? "OK" : "NULL") << std::endl;
         return m_activeTab;
     }
@@ -536,6 +542,12 @@ void TerminalDock::onTmuxWindowListChanged(const std::vector<TmuxWindow>& window
 
 std::string TerminalDock::generateTabName() {
     return "Terminal " + std::to_string(m_nextTabId);
+}
+
+void TerminalDock::setColorTheme(const std::string& themeId) {
+    if (m_terminal) {
+        m_terminal->setColorTheme(themeId);
+    }
 }
 
 } // namespace pbterm

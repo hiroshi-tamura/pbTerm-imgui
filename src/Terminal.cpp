@@ -6,6 +6,163 @@
 
 namespace pbterm {
 
+// カラーテーマ定義（10個）
+static const std::vector<TerminalColorTheme> s_colorThemes = {
+    // 1. Default - 現行の黒背景
+    {
+        "Default", "default",
+        {0, 0, 0},           // 背景
+        {229, 229, 229},     // 前景
+        {200, 200, 200},     // カーソル
+        {100, 150, 255, 100}, // 選択
+        {
+            {0, 0, 0}, {205, 0, 0}, {0, 205, 0}, {205, 205, 0},
+            {0, 0, 238}, {205, 0, 205}, {0, 205, 205}, {229, 229, 229},
+            {127, 127, 127}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0},
+            {92, 92, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}
+        }
+    },
+    // 2. Solarized Dark
+    {
+        "Solarized Dark", "solarized-dark",
+        {0, 43, 54},         // 背景
+        {131, 148, 150},     // 前景
+        {147, 161, 161},     // カーソル
+        {7, 54, 66, 100},    // 選択
+        {
+            {7, 54, 66}, {220, 50, 47}, {133, 153, 0}, {181, 137, 0},
+            {38, 139, 210}, {211, 54, 130}, {42, 161, 152}, {238, 232, 213},
+            {0, 43, 54}, {203, 75, 22}, {88, 110, 117}, {101, 123, 131},
+            {131, 148, 150}, {108, 113, 196}, {147, 161, 161}, {253, 246, 227}
+        }
+    },
+    // 3. Solarized Light
+    {
+        "Solarized Light", "solarized-light",
+        {253, 246, 227},     // 背景
+        {101, 123, 131},     // 前景
+        {88, 110, 117},      // カーソル
+        {238, 232, 213, 100}, // 選択
+        {
+            {7, 54, 66}, {220, 50, 47}, {133, 153, 0}, {181, 137, 0},
+            {38, 139, 210}, {211, 54, 130}, {42, 161, 152}, {238, 232, 213},
+            {0, 43, 54}, {203, 75, 22}, {88, 110, 117}, {101, 123, 131},
+            {131, 148, 150}, {108, 113, 196}, {147, 161, 161}, {253, 246, 227}
+        }
+    },
+    // 4. Dracula
+    {
+        "Dracula", "dracula",
+        {40, 42, 54},        // 背景
+        {248, 248, 242},     // 前景
+        {248, 248, 242},     // カーソル
+        {68, 71, 90, 100},   // 選択
+        {
+            {33, 34, 44}, {255, 85, 85}, {80, 250, 123}, {241, 250, 140},
+            {189, 147, 249}, {255, 121, 198}, {139, 233, 253}, {248, 248, 242},
+            {98, 114, 164}, {255, 110, 110}, {105, 255, 148}, {255, 255, 165},
+            {214, 172, 255}, {255, 146, 223}, {164, 255, 255}, {255, 255, 255}
+        }
+    },
+    // 5. One Dark
+    {
+        "One Dark", "one-dark",
+        {40, 44, 52},        // 背景
+        {171, 178, 191},     // 前景
+        {171, 178, 191},     // カーソル
+        {62, 68, 81, 100},   // 選択
+        {
+            {40, 44, 52}, {224, 108, 117}, {152, 195, 121}, {229, 192, 123},
+            {97, 175, 239}, {198, 120, 221}, {86, 182, 194}, {171, 178, 191},
+            {92, 99, 112}, {224, 108, 117}, {152, 195, 121}, {229, 192, 123},
+            {97, 175, 239}, {198, 120, 221}, {86, 182, 194}, {255, 255, 255}
+        }
+    },
+    // 6. Nord
+    {
+        "Nord", "nord",
+        {46, 52, 64},        // 背景
+        {216, 222, 233},     // 前景
+        {216, 222, 233},     // カーソル
+        {67, 76, 94, 100},   // 選択
+        {
+            {59, 66, 82}, {191, 97, 106}, {163, 190, 140}, {235, 203, 139},
+            {129, 161, 193}, {180, 142, 173}, {136, 192, 208}, {229, 233, 240},
+            {76, 86, 106}, {191, 97, 106}, {163, 190, 140}, {235, 203, 139},
+            {129, 161, 193}, {180, 142, 173}, {143, 188, 187}, {236, 239, 244}
+        }
+    },
+    // 7. Monokai
+    {
+        "Monokai", "monokai",
+        {39, 40, 34},        // 背景
+        {248, 248, 242},     // 前景
+        {248, 248, 242},     // カーソル
+        {73, 72, 62, 100},   // 選択
+        {
+            {39, 40, 34}, {249, 38, 114}, {166, 226, 46}, {244, 191, 117},
+            {102, 217, 239}, {174, 129, 255}, {161, 239, 228}, {248, 248, 242},
+            {117, 113, 94}, {249, 38, 114}, {166, 226, 46}, {244, 191, 117},
+            {102, 217, 239}, {174, 129, 255}, {161, 239, 228}, {249, 248, 245}
+        }
+    },
+    // 8. Gruvbox Dark
+    {
+        "Gruvbox Dark", "gruvbox-dark",
+        {40, 40, 40},        // 背景
+        {235, 219, 178},     // 前景
+        {235, 219, 178},     // カーソル
+        {80, 73, 69, 100},   // 選択
+        {
+            {40, 40, 40}, {204, 36, 29}, {152, 151, 26}, {215, 153, 33},
+            {69, 133, 136}, {177, 98, 134}, {104, 157, 106}, {168, 153, 132},
+            {146, 131, 116}, {251, 73, 52}, {184, 187, 38}, {250, 189, 47},
+            {131, 165, 152}, {211, 134, 155}, {142, 192, 124}, {235, 219, 178}
+        }
+    },
+    // 9. Tokyo Night
+    {
+        "Tokyo Night", "tokyo-night",
+        {26, 27, 38},        // 背景
+        {169, 177, 214},     // 前景
+        {192, 202, 245},     // カーソル
+        {52, 59, 88, 100},   // 選択
+        {
+            {21, 22, 30}, {247, 118, 142}, {158, 206, 106}, {224, 175, 104},
+            {122, 162, 247}, {187, 154, 247}, {125, 207, 255}, {192, 202, 245},
+            {65, 72, 104}, {247, 118, 142}, {158, 206, 106}, {224, 175, 104},
+            {122, 162, 247}, {187, 154, 247}, {125, 207, 255}, {255, 255, 255}
+        }
+    },
+    // 10. Catppuccin Mocha
+    {
+        "Catppuccin Mocha", "catppuccin-mocha",
+        {30, 30, 46},        // 背景
+        {205, 214, 244},     // 前景
+        {245, 224, 220},     // カーソル
+        {69, 71, 90, 100},   // 選択
+        {
+            {69, 71, 90}, {243, 139, 168}, {166, 227, 161}, {249, 226, 175},
+            {137, 180, 250}, {245, 194, 231}, {148, 226, 213}, {186, 194, 222},
+            {88, 91, 112}, {243, 139, 168}, {166, 227, 161}, {249, 226, 175},
+            {137, 180, 250}, {245, 194, 231}, {148, 226, 213}, {205, 214, 244}
+        }
+    }
+};
+
+const std::vector<TerminalColorTheme>& getAvailableThemes() {
+    return s_colorThemes;
+}
+
+const TerminalColorTheme* getThemeById(const std::string& id) {
+    for (const auto& theme : s_colorThemes) {
+        if (theme.id == id) {
+            return &theme;
+        }
+    }
+    return nullptr;
+}
+
 // Unicode文字が全角かどうかを判定
 static bool isWideChar(uint32_t codepoint) {
     // CJK記号、ひらがな、カタカナ、漢字、全角英数など
@@ -59,6 +216,9 @@ static void vtermOutputCallback(const char* s, size_t len, void* user) {
 Terminal::Terminal(int cols, int rows)
     : m_cols(cols), m_rows(rows)
 {
+    // デフォルトテーマを設定
+    m_colorTheme = s_colorThemes[0];
+
     // libvterm初期化
     m_vterm = vterm_new(rows, cols);
     vterm_set_utf8(m_vterm, 1);
@@ -411,8 +571,8 @@ void Terminal::render(ImFont* font) {
         }
     }
 
-    // 全体の背景（スクロールバック + 現在の画面）
-    ImU32 bgColor = IM_COL32(0, 0, 0, 255);  // 真っ黒
+    // 全体の背景（スクロールバック + 現在の画面）- テーマの背景色を使用
+    ImU32 bgColor = m_colorTheme.background.toImU32();
     float totalHeight = (scrollbackRows + m_rows) * charSize.y;
     drawList->AddRectFilled(pos, ImVec2(pos.x + charSize.x * m_cols, pos.y + totalHeight), bgColor);
 
@@ -498,7 +658,8 @@ void Terminal::render(ImFont* font) {
             std::swap(startCol, endCol);
         }
 
-        ImU32 selColor = IM_COL32(100, 150, 255, 100);
+        // テーマの選択色を使用
+        ImU32 selColor = m_colorTheme.selection.toImU32();
 
         for (int row = startRow; row <= endRow; ++row) {
             int colStart = (row == startRow) ? startCol : 0;
@@ -526,18 +687,18 @@ void Terminal::render(ImFont* font) {
         }
 
         if (showCursor) {
-            // フォーカス時は塗りつぶし、非フォーカス時は枠線
+            // フォーカス時は塗りつぶし、非フォーカス時は枠線 - テーマのカーソル色を使用
             if (windowFocused) {
                 drawList->AddRectFilled(
                     cursorPos,
                     ImVec2(cursorPos.x + charSize.x, cursorPos.y + charSize.y),
-                    IM_COL32(200, 200, 200, 180)
+                    IM_COL32(m_colorTheme.cursor.r, m_colorTheme.cursor.g, m_colorTheme.cursor.b, 180)
                 );
             } else {
                 drawList->AddRect(
                     cursorPos,
                     ImVec2(cursorPos.x + charSize.x, cursorPos.y + charSize.y),
-                    IM_COL32(150, 150, 150, 200),
+                    IM_COL32(m_colorTheme.cursor.r, m_colorTheme.cursor.g, m_colorTheme.cursor.b, 200),
                     0.0f, 0, 1.5f
                 );
             }
@@ -688,29 +849,11 @@ TerminalColor Terminal::vtermColorToTerminalColor(VTermColor color) {
     if (VTERM_COLOR_IS_RGB(&color)) {
         return TerminalColor(color.rgb.red, color.rgb.green, color.rgb.blue);
     } else if (VTERM_COLOR_IS_INDEXED(&color)) {
-        // 基本16色
-        static const TerminalColor colors16[] = {
-            {0, 0, 0},       // 黒
-            {205, 0, 0},     // 赤
-            {0, 205, 0},     // 緑
-            {205, 205, 0},   // 黄
-            {0, 0, 238},     // 青
-            {205, 0, 205},   // マゼンタ
-            {0, 205, 205},   // シアン
-            {229, 229, 229}, // 白
-            {127, 127, 127}, // 明るい黒
-            {255, 0, 0},     // 明るい赤
-            {0, 255, 0},     // 明るい緑
-            {255, 255, 0},   // 明るい黄
-            {92, 92, 255},   // 明るい青
-            {255, 0, 255},   // 明るいマゼンタ
-            {0, 255, 255},   // 明るいシアン
-            {255, 255, 255}, // 明るい白
-        };
-
         int idx = color.indexed.idx;
+
+        // ANSI 16色はテーマから取得
         if (idx < 16) {
-            return colors16[idx];
+            return m_colorTheme.colors[idx];
         } else if (idx < 232) {
             // 216色キューブ
             idx -= 16;
@@ -725,7 +868,18 @@ TerminalColor Terminal::vtermColorToTerminalColor(VTermColor color) {
         }
     }
 
-    return TerminalColor(229, 229, 229); // デフォルト
+    // デフォルトはテーマの前景色
+    return m_colorTheme.foreground;
+}
+
+void Terminal::setColorTheme(const std::string& themeId) {
+    const TerminalColorTheme* theme = getThemeById(themeId);
+    if (theme) {
+        m_colorTheme = *theme;
+        // 画面を更新
+        std::lock_guard<std::mutex> lock(m_mutex);
+        updateScreen();
+    }
 }
 
 // libvtermコールバック実装

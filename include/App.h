@@ -78,6 +78,7 @@ private:
     bool m_showConnectionDialog = false;
     bool m_showSettings = false;
     bool m_connected = false;
+    std::string m_connectedProfileName;  // 接続中のプロファイル名
     bool m_needFontReload = false;
     bool m_showTmuxMissing = false;
 

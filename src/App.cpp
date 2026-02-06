@@ -197,7 +197,7 @@ bool App::init() {
     m_terminalDock->setTmuxController(m_tmuxController.get());
 
     m_connectionDialog = std::make_unique<ConnectionDialog>(m_profileManager.get());
-    m_connectionDialog->setConnectCallback([this](const SshConfig& config) {
+    m_connectionDialog->setConnectCallback([this](const SshConfig& config, const std::string& profileName) {
         if (m_connected) {
             disconnect();
         }
@@ -210,7 +210,9 @@ bool App::init() {
                 m_showTmuxMissing = true;
             }
             m_connected = true;
+            m_connectedProfileName = profileName;
             m_terminalDock->onConnected();
+            m_terminalDock->setColorTheme(m_appSettings.colorTheme);
             if (m_folderTreeDock) {
                 m_folderTreeDock->onConnected();
             }
@@ -252,7 +254,9 @@ bool App::init() {
                 m_showTmuxMissing = true;
             }
             m_connected = true;
+            m_connectedProfileName = autoProfile->name;
             m_terminalDock->onConnected();
+            m_terminalDock->setColorTheme(m_appSettings.colorTheme);
             if (m_folderTreeDock) {
                 m_folderTreeDock->onConnected();
             }
@@ -425,6 +429,13 @@ void App::onSettingsApplied(const AppSettings& settings) {
     bool needReload = (m_appSettings.fontPath != settings.fontPath ||
                        m_appSettings.fontSize != settings.fontSize);
 
+    // カラーテーマ変更
+    if (m_appSettings.colorTheme != settings.colorTheme) {
+        if (m_terminalDock) {
+            m_terminalDock->setColorTheme(settings.colorTheme);
+        }
+    }
+
     m_appSettings = settings;
 
     if (needReload) {
@@ -562,9 +573,17 @@ void App::renderMenuBar() {
             ImGui::EndMenu();
         }
 
-        // 接続状態表示（右寄せ + 色付きインジケータ）
-        const char* statusText = m_connected ? loc.statusConnected : loc.statusDisconnected;
-        ImVec2 textSize = ImGui::CalcTextSize(statusText);
+        // 接続状態表示（右寄せ + 色付きインジケータ + プロファイル名）
+        std::string statusText;
+        if (m_connected && !m_connectedProfileName.empty()) {
+            statusText = std::string(loc.statusConnected) + ": " + m_connectedProfileName;
+        } else if (m_connected) {
+            statusText = loc.statusConnected;
+        } else {
+            statusText = loc.statusDisconnected;
+        }
+
+        ImVec2 textSize = ImGui::CalcTextSize(statusText.c_str());
         float radius = 4.5f;
         float padding = ImGui::GetStyle().ItemSpacing.x * 0.8f;
         float rightPadding = 18.0f;
@@ -588,7 +607,7 @@ void App::renderMenuBar() {
         );
         ImGui::Dummy(ImVec2(radius * 2 + padding, lineH));
         ImGui::SameLine();
-        ImGui::TextColored(textColor, "%s", statusText);
+        ImGui::TextColored(textColor, "%s", statusText.c_str());
 
         ImGui::EndMenuBar();
     }
@@ -704,6 +723,7 @@ void App::disconnect() {
     m_tmuxController->closeControlChannel();
     m_sshConnection->disconnect();
     m_connected = false;
+    m_connectedProfileName.clear();
     m_terminalDock->onDisconnected();
     if (m_folderTreeDock) {
         m_folderTreeDock->onDisconnected();

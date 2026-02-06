@@ -374,8 +374,16 @@ void ConnectionDialog::renderButtons(bool* open) {
                 );
             }
 
+            // プロファイル名を取得（選択中のプロファイルまたはホスト名）
+            std::string profileName;
+            if (m_selectedProfile > 0 && m_selectedProfile <= static_cast<int>(m_profileManager->profiles().size())) {
+                profileName = m_profileManager->profiles()[m_selectedProfile - 1].name;
+            } else {
+                profileName = m_config.host;  // 新規の場合はホスト名を使用
+            }
+
             m_profileManager->save();
-            m_connectCallback(m_config);
+            m_connectCallback(m_config, profileName);
         }
     }
 
