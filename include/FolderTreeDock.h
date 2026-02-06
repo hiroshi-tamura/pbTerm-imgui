@@ -22,6 +22,17 @@ public:
 
     void render();
 
+    // 外部からのファイルドロップを処理
+    void handleExternalFileDrop(const std::vector<std::string>& paths);
+
+    // 現在のドロップターゲットパス（マウス下のフォルダ）を取得
+    std::string currentDropTargetPath() const { return m_dropTargetPath; }
+
+    // アップロード進行状況
+    bool isUploading() const { return m_uploading; }
+    float uploadProgress() const { return m_uploadProgress; }
+    std::string uploadCurrentFile() const { return m_uploadCurrentFile; }
+
 private:
     struct Node {
         std::string name;
@@ -53,7 +64,9 @@ private:
     void openDeleteDialog(const std::string& targetPath, bool isDir);
     void renderNewFolderDialog();
     void renderDeleteDialog();
+    void renderDownloadDialog();
     void refreshNodeByPath(const std::string& path);
+    void downloadToLocal(const std::string& remotePath, bool isDir);
 
     bool isPathMatch(const std::string& path, const std::string& activePath) const;
     bool isAncestorPath(const std::string& path, const std::string& targetPath) const;
@@ -77,6 +90,21 @@ private:
     std::string m_deleteTarget;
     bool m_deleteIsDir = false;
     char m_newFolderName[256] = {0};
+
+    // ドラッグ＆ドロップ
+    std::string m_dropTargetPath;       // 現在のドロップターゲット
+    bool m_uploading = false;
+    float m_uploadProgress = 0.0f;
+    std::string m_uploadCurrentFile;
+    std::vector<std::string> m_pendingUploads;
+    std::string m_uploadDestination;
+
+    // ダウンロード
+    bool m_downloading = false;
+    float m_downloadProgress = 0.0f;
+    std::string m_downloadCurrentFile;
+    bool m_showDownloadComplete = false;
+    std::string m_downloadedPath;
 };
 
 } // namespace pbterm

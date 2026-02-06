@@ -37,7 +37,9 @@ private:
 
     // GLFWコールバック
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+    static void fileDropCallback(GLFWwindow* window, int count, const char** paths);
     void onFramebufferResize(int width, int height);
+    void onFileDrop(int count, const char** paths);
 
     // 接続管理
     void connect();

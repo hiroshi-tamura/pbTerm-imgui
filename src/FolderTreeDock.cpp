@@ -8,6 +8,10 @@
 #include <cstdio>
 #include <cstring>
 #include <sstream>
+#include <filesystem>
+#include <thread>
+#include <iostream>
+#include <cstdlib>
 
 namespace pbterm {
 
@@ -120,6 +124,33 @@ void FolderTreeDock::render() {
 
     ImGui::Separator();
 
+    // アップロード進行状況表示
+    if (m_uploading) {
+        ImGui::Separator();
+        ImGui::TextUnformatted(u8"\ue2c6");  // upload アイコン
+        ImGui::SameLine();
+        if (!m_uploadCurrentFile.empty()) {
+            ImGui::Text("%s", m_uploadCurrentFile.c_str());
+        }
+        ImGui::ProgressBar(m_uploadProgress, ImVec2(-1, 0));
+        ImGui::Separator();
+    }
+
+    // ダウンロード進行状況表示
+    if (m_downloading) {
+        ImGui::Separator();
+        ImGui::TextUnformatted(u8"\ue2c4");  // download アイコン
+        ImGui::SameLine();
+        if (!m_downloadCurrentFile.empty()) {
+            ImGui::Text("%s", m_downloadCurrentFile.c_str());
+        }
+        ImGui::ProgressBar(m_downloadProgress, ImVec2(-1, 0));
+        ImGui::Separator();
+    }
+
+    // ドロップターゲットをリセット（次のフレームで更新される）
+    m_dropTargetPath.clear();
+
     ImGui::BeginChild("##folderTree", ImVec2(0, 0), ImGuiChildFlags_None);
 
     const std::string focusPath = m_focusPending ? m_focusPath : std::string();
@@ -128,10 +159,20 @@ void FolderTreeDock::render() {
         renderNode(*root, activePath, focusPath);
     }
 
+    // ツリー領域全体がドロップターゲット（ルートディレクトリにアップロード）
+    if (ImGui::BeginDragDropTarget()) {
+        if (ImGui::AcceptDragDropPayload("PBTERM_EXTERNAL_FILES")) {
+            // ホームディレクトリにアップロード
+            m_dropTargetPath.clear();
+        }
+        ImGui::EndDragDropTarget();
+    }
+
     ImGui::EndChild();
 
     renderNewFolderDialog();
     renderDeleteDialog();
+    renderDownloadDialog();
 }
 
 void FolderTreeDock::refreshRoots() {
@@ -314,6 +355,9 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const
         if (!isRoot && ImGui::MenuItem(loc.folderDelete)) {
             openDeleteDialog(node.path, node.isDir);
         }
+        if (!isRoot && ImGui::MenuItem(loc.folderDownload)) {
+            downloadToLocal(node.path, node.isDir);
+        }
         ImGui::EndPopup();
     }
 
@@ -322,6 +366,20 @@ void FolderTreeDock::renderNode(Node& node, const std::string& activePath, const
             ImGui::SetDragDropPayload("PBTERM_PATH", node.path.c_str(), node.path.size() + 1);
             ImGui::TextUnformatted(node.path.c_str());
             ImGui::EndDragDropSource();
+        }
+
+        // 外部ドロップターゲット: フォルダはドロップを受け入れられる
+        if (ImGui::BeginDragDropTarget()) {
+            if (ImGui::AcceptDragDropPayload("PBTERM_EXTERNAL_FILES")) {
+                // 外部ファイルドロップを処理
+                m_uploadDestination = node.path;
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        // ホバー時にドロップターゲットとしてマーク
+        if (ImGui::IsItemHovered()) {
+            m_dropTargetPath = node.path;
         }
     }
 
@@ -539,6 +597,198 @@ std::string FolderTreeDock::joinPathWindows(const std::string& base, const std::
     if (base.empty()) return name;
     if (base.back() == '\\') return base + name;
     return base + "\\" + name;
+}
+
+void FolderTreeDock::renderDownloadDialog() {
+    if (!m_showDownloadComplete) return;
+
+    const Localization& loc = getLocalization(m_language);
+    ImGui::OpenPopup(loc.folderDownloadComplete);
+
+    if (ImGui::BeginPopupModal(loc.folderDownloadComplete, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("%s", m_downloadedPath.c_str());
+        ImGui::Spacing();
+
+        if (ImGui::Button(loc.folderOpenInFinder, ImVec2(150, 0))) {
+            // Finderで開く（macOS）
+            std::string cmd;
+#ifdef __APPLE__
+            cmd = "open -R \"" + m_downloadedPath + "\"";
+#elif _WIN32
+            cmd = "explorer /select,\"" + m_downloadedPath + "\"";
+#else
+            cmd = "xdg-open \"" + std::filesystem::path(m_downloadedPath).parent_path().string() + "\"";
+#endif
+            std::system(cmd.c_str());
+            m_showDownloadComplete = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(loc.dlgOK, ImVec2(80, 0))) {
+            m_showDownloadComplete = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+}
+
+void FolderTreeDock::downloadToLocal(const std::string& remotePath, bool isDir) {
+    if (!m_connection || !m_connection->isConnected()) {
+        return;
+    }
+
+    namespace fs = std::filesystem;
+
+    // ダウンロード先を決定（ユーザーのダウンロードフォルダ）
+    std::string downloadDir;
+#ifdef __APPLE__
+    const char* home = std::getenv("HOME");
+    if (home) {
+        downloadDir = std::string(home) + "/Downloads";
+    }
+#elif _WIN32
+    const char* userProfile = std::getenv("USERPROFILE");
+    if (userProfile) {
+        downloadDir = std::string(userProfile) + "\\Downloads";
+    }
+#else
+    const char* home = std::getenv("HOME");
+    if (home) {
+        downloadDir = std::string(home) + "/Downloads";
+    }
+#endif
+
+    if (downloadDir.empty() || !fs::exists(downloadDir)) {
+        downloadDir = fs::temp_directory_path().string();
+    }
+
+    // ファイル名を取得
+    std::string filename;
+    if (m_platform == RemotePlatform::Unix) {
+        size_t pos = remotePath.rfind('/');
+        filename = (pos != std::string::npos) ? remotePath.substr(pos + 1) : remotePath;
+    } else {
+        size_t pos = remotePath.rfind('\\');
+        filename = (pos != std::string::npos) ? remotePath.substr(pos + 1) : remotePath;
+    }
+
+    std::string localPath = downloadDir + "/" + filename;
+
+    std::cout << "ダウンロード開始: " << remotePath << " -> " << localPath << std::endl;
+
+    m_downloading = true;
+    m_downloadProgress = 0.0f;
+    m_downloadCurrentFile = filename;
+
+    // 別スレッドでダウンロードを実行
+    std::thread downloadThread([this, remotePath, localPath, isDir]() {
+        bool success = false;
+
+        if (isDir) {
+            success = m_connection->downloadDirectory(remotePath, localPath);
+        } else {
+            success = m_connection->downloadFile(remotePath, localPath);
+        }
+
+        m_downloading = false;
+        m_downloadProgress = 1.0f;
+        m_downloadCurrentFile.clear();
+
+        if (success) {
+            std::cout << "ダウンロード完了: " << localPath << std::endl;
+            m_downloadedPath = localPath;
+            m_showDownloadComplete = true;
+        } else {
+            std::cerr << "ダウンロード失敗: " << m_connection->lastError() << std::endl;
+        }
+    });
+
+    downloadThread.detach();
+}
+
+void FolderTreeDock::handleExternalFileDrop(const std::vector<std::string>& paths) {
+    if (!m_connection || !m_connection->isConnected()) {
+        return;
+    }
+
+    if (paths.empty()) {
+        return;
+    }
+
+    // ドロップターゲットが設定されていない場合は、ホームディレクトリを使用
+    std::string destination = m_dropTargetPath;
+    if (destination.empty()) {
+        if (m_platform == RemotePlatform::Unix) {
+            destination = exec("echo $HOME");
+            destination = trim(destination);
+            if (destination.empty()) {
+                destination = "/tmp";
+            }
+        } else {
+            destination = exec("echo %USERPROFILE%");
+            destination = trim(destination);
+        }
+    }
+
+    if (destination.empty()) {
+        std::cerr << "アップロード先が不明です" << std::endl;
+        return;
+    }
+
+    std::cout << "ファイルドロップ: " << paths.size() << " 件を " << destination << " にアップロード" << std::endl;
+
+    namespace fs = std::filesystem;
+
+    m_uploading = true;
+    m_uploadProgress = 0.0f;
+
+    // 別スレッドでアップロードを実行
+    std::thread uploadThread([this, paths, destination]() {
+        int completed = 0;
+        int total = static_cast<int>(paths.size());
+
+        for (const auto& localPath : paths) {
+            fs::path p(localPath);
+            std::string filename = p.filename().string();
+            m_uploadCurrentFile = filename;
+
+            std::string remotePath;
+            if (m_platform == RemotePlatform::Unix) {
+                remotePath = joinPathUnix(destination, filename);
+            } else {
+                remotePath = joinPathWindows(destination, filename);
+            }
+
+            std::cout << "アップロード中: " << localPath << " -> " << remotePath << std::endl;
+
+            bool success = false;
+            if (fs::is_directory(localPath)) {
+                success = m_connection->uploadDirectory(localPath, remotePath);
+            } else {
+                success = m_connection->uploadFile(localPath, remotePath);
+            }
+
+            if (success) {
+                std::cout << "完了: " << filename << std::endl;
+            } else {
+                std::cerr << "失敗: " << filename << " - " << m_connection->lastError() << std::endl;
+            }
+
+            completed++;
+            m_uploadProgress = static_cast<float>(completed) / static_cast<float>(total);
+        }
+
+        m_uploading = false;
+        m_uploadCurrentFile.clear();
+        m_uploadProgress = 1.0f;
+
+        // ツリーを更新
+        for (auto& root : m_roots) {
+            root->loaded = false;
+        }
+    });
+
+    uploadThread.detach();
 }
 
 } // namespace pbterm

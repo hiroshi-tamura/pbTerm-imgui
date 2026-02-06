@@ -84,6 +84,11 @@ static const Localization englishLocalization = {
     "tmux not found",
     "tmux is not installed on the remote host.",
     "OK",
+
+    // ダウンロード
+    "Download",
+    "Download Complete!",
+    "Open in Finder",
 };
 
 // 日本語ローカライゼーション
@@ -162,6 +167,11 @@ static const Localization japaneseLocalization = {
     "tmuxが見つかりません",
     "接続先PCにtmuxがインストールされていません。",
     "OK",
+
+    // ダウンロード
+    "ダウンロード",
+    "ダウンロード完了！",
+    "Finderで開く",
 };
 
 const Localization& getLocalization(int language) {

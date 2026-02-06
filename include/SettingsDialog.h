@@ -115,6 +115,11 @@ struct Localization {
     const char* dlgTmuxMissingTitle;
     const char* dlgTmuxMissingMessage;
     const char* dlgTmuxMissingOk;
+
+    // ダウンロード
+    const char* folderDownload;
+    const char* folderDownloadComplete;
+    const char* folderOpenInFinder;
 };
 
 // 言語取得

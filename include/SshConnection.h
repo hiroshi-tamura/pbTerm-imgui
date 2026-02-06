@@ -92,6 +92,16 @@ public:
     // エラーメッセージ
     std::string lastError() const { return m_lastError; }
 
+    // SCPファイル転送
+    // ローカルファイルをリモートにアップロード
+    bool uploadFile(const std::string& localPath, const std::string& remotePath);
+    // リモートファイルをローカルにダウンロード
+    bool downloadFile(const std::string& remotePath, const std::string& localPath);
+    // ディレクトリをアップロード（再帰的）
+    bool uploadDirectory(const std::string& localPath, const std::string& remotePath);
+    // ディレクトリをダウンロード（再帰的）
+    bool downloadDirectory(const std::string& remotePath, const std::string& localPath);
+
 private:
     ssh_session m_session = nullptr;
     std::vector<std::shared_ptr<SshChannel>> m_channels;

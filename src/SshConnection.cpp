@@ -1,6 +1,11 @@
 #include "SshConnection.h"
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <filesystem>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <libssh/sftp.h>
 
 namespace pbterm {
 
@@ -393,6 +398,252 @@ std::string SshConnection::exec(const std::string& cmd, int timeoutMs) {
     }
 
     return result;
+}
+
+bool SshConnection::uploadFile(const std::string& localPath, const std::string& remotePath) {
+    if (!m_session || !m_connected) {
+        m_lastError = "未接続";
+        return false;
+    }
+
+    // ローカルファイルを開く
+    std::ifstream file(localPath, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        m_lastError = "ローカルファイルを開けません: " + localPath;
+        return false;
+    }
+
+    // ファイルサイズ取得
+    std::streamsize fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    // SFTPセッションを開く
+    sftp_session sftp = sftp_new(m_session);
+    if (!sftp) {
+        m_lastError = "SFTPセッション作成失敗";
+        return false;
+    }
+
+    if (sftp_init(sftp) != SSH_OK) {
+        m_lastError = "SFTP初期化失敗";
+        sftp_free(sftp);
+        return false;
+    }
+
+    // リモートファイルを作成
+    sftp_file remoteFile = sftp_open(sftp, remotePath.c_str(),
+                                      O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+    if (!remoteFile) {
+        m_lastError = "リモートファイル作成失敗: " + remotePath;
+        sftp_free(sftp);
+        return false;
+    }
+
+    // データを転送
+    const size_t bufferSize = 65536;
+    char buffer[bufferSize];
+    bool success = true;
+
+    while (file && fileSize > 0) {
+        file.read(buffer, bufferSize);
+        std::streamsize bytesRead = file.gcount();
+        if (bytesRead > 0) {
+            ssize_t written = sftp_write(remoteFile, buffer, static_cast<size_t>(bytesRead));
+            if (written != bytesRead) {
+                m_lastError = "書き込みエラー";
+                success = false;
+                break;
+            }
+            fileSize -= bytesRead;
+        }
+    }
+
+    sftp_close(remoteFile);
+    sftp_free(sftp);
+
+    if (success) {
+        std::cout << "アップロード完了: " << localPath << " -> " << remotePath << std::endl;
+    }
+
+    return success;
+}
+
+bool SshConnection::downloadFile(const std::string& remotePath, const std::string& localPath) {
+    if (!m_session || !m_connected) {
+        m_lastError = "未接続";
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    // SFTPセッションを開く
+    sftp_session sftp = sftp_new(m_session);
+    if (!sftp) {
+        m_lastError = "SFTPセッション作成失敗";
+        return false;
+    }
+
+    if (sftp_init(sftp) != SSH_OK) {
+        m_lastError = "SFTP初期化失敗";
+        sftp_free(sftp);
+        return false;
+    }
+
+    // リモートファイルを開く
+    sftp_file remoteFile = sftp_open(sftp, remotePath.c_str(), O_RDONLY, 0);
+    if (!remoteFile) {
+        m_lastError = "リモートファイルを開けません: " + remotePath;
+        sftp_free(sftp);
+        return false;
+    }
+
+    // ローカルファイルを作成
+    std::ofstream file(localPath, std::ios::binary);
+    if (!file.is_open()) {
+        m_lastError = "ローカルファイル作成失敗: " + localPath;
+        sftp_close(remoteFile);
+        sftp_free(sftp);
+        return false;
+    }
+
+    // データを転送
+    const size_t bufferSize = 65536;
+    char buffer[bufferSize];
+    bool success = true;
+
+    while (true) {
+        ssize_t bytesRead = sftp_read(remoteFile, buffer, bufferSize);
+        if (bytesRead == 0) {
+            break;  // EOF
+        } else if (bytesRead < 0) {
+            m_lastError = "読み取りエラー";
+            success = false;
+            break;
+        }
+        file.write(buffer, bytesRead);
+    }
+
+    sftp_close(remoteFile);
+    sftp_free(sftp);
+    file.close();
+
+    if (success) {
+        std::cout << "ダウンロード完了: " << remotePath << " -> " << localPath << std::endl;
+    } else {
+        // 失敗した場合は不完全なファイルを削除
+        std::filesystem::remove(localPath);
+    }
+
+    return success;
+}
+
+bool SshConnection::uploadDirectory(const std::string& localPath, const std::string& remotePath) {
+    if (!m_session || !m_connected) {
+        m_lastError = "未接続";
+        return false;
+    }
+
+    namespace fs = std::filesystem;
+
+    if (!fs::is_directory(localPath)) {
+        return uploadFile(localPath, remotePath);
+    }
+
+    // リモートにディレクトリを作成
+    std::string mkdirCmd = "mkdir -p '" + remotePath + "'";
+    exec(mkdirCmd, 5000);
+
+    bool success = true;
+
+    for (const auto& entry : fs::directory_iterator(localPath)) {
+        std::string name = entry.path().filename().string();
+        std::string localSubPath = localPath + "/" + name;
+        std::string remoteSubPath = remotePath + "/" + name;
+
+        if (entry.is_directory()) {
+            if (!uploadDirectory(localSubPath, remoteSubPath)) {
+                success = false;
+            }
+        } else {
+            if (!uploadFile(localSubPath, remoteSubPath)) {
+                success = false;
+            }
+        }
+    }
+
+    return success;
+}
+
+bool SshConnection::downloadDirectory(const std::string& remotePath, const std::string& localPath) {
+    if (!m_session || !m_connected) {
+        m_lastError = "未接続";
+        return false;
+    }
+
+    namespace fs = std::filesystem;
+
+    // ローカルにディレクトリを作成
+    fs::create_directories(localPath);
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    // SFTPセッションを開く
+    sftp_session sftp = sftp_new(m_session);
+    if (!sftp) {
+        m_lastError = "SFTPセッション作成失敗";
+        return false;
+    }
+
+    if (sftp_init(sftp) != SSH_OK) {
+        m_lastError = "SFTP初期化失敗";
+        sftp_free(sftp);
+        return false;
+    }
+
+    // リモートディレクトリを開く
+    sftp_dir dir = sftp_opendir(sftp, remotePath.c_str());
+    if (!dir) {
+        // ファイルかもしれない
+        sftp_free(sftp);
+        // mutexをアンロックしてからダウンロード
+        return false;  // 別途ファイルとして処理
+    }
+
+    std::vector<std::pair<std::string, bool>> entries;  // name, isDir
+
+    sftp_attributes attrs;
+    while ((attrs = sftp_readdir(sftp, dir)) != nullptr) {
+        std::string name = attrs->name;
+        if (name != "." && name != "..") {
+            bool isDir = (attrs->type == SSH_FILEXFER_TYPE_DIRECTORY);
+            entries.emplace_back(name, isDir);
+        }
+        sftp_attributes_free(attrs);
+    }
+
+    sftp_closedir(dir);
+    sftp_free(sftp);
+
+    // エントリを処理（mutexをアンロックした状態で）
+    bool success = true;
+    for (const auto& [name, isDir] : entries) {
+        std::string remoteSubPath = remotePath + "/" + name;
+        std::string localSubPath = localPath + "/" + name;
+
+        if (isDir) {
+            if (!downloadDirectory(remoteSubPath, localSubPath)) {
+                success = false;
+            }
+        } else {
+            if (!downloadFile(remoteSubPath, localSubPath)) {
+                success = false;
+            }
+        }
+    }
+
+    return success;
 }
 
 } // namespace pbterm

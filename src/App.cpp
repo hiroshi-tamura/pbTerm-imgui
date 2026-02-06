@@ -180,6 +180,7 @@ bool App::init() {
     // フレームバッファサイズ変更コールバックを設定
     glfwSetWindowUserPointer(m_window, this);
     glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
+    glfwSetDropCallback(m_window, fileDropCallback);
 
     // Dear ImGui初期化
     setupImGui();
@@ -738,9 +739,31 @@ void App::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
     }
 }
 
+void App::fileDropCallback(GLFWwindow* window, int count, const char** paths) {
+    App* app = static_cast<App*>(glfwGetWindowUserPointer(window));
+    if (app) {
+        app->onFileDrop(count, paths);
+    }
+}
+
 void App::onFramebufferResize(int width, int height) {
     // フレームバッファサイズが変更された時に即座にビューポートを更新
     glViewport(0, 0, width, height);
+}
+
+void App::onFileDrop(int count, const char** paths) {
+    if (!m_connected || !m_folderTreeDock) {
+        std::cout << "ファイルドロップ: 未接続のため無視" << std::endl;
+        return;
+    }
+
+    std::vector<std::string> filePaths;
+    for (int i = 0; i < count; ++i) {
+        filePaths.push_back(paths[i]);
+        std::cout << "ドロップされたファイル: " << paths[i] << std::endl;
+    }
+
+    m_folderTreeDock->handleExternalFileDrop(filePaths);
 }
 
 void App::shutdown() {
