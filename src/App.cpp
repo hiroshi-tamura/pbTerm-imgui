@@ -21,6 +21,9 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <libgen.h>
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+#include "DragDropHelper.h"
 #endif
 
 namespace pbterm {
@@ -176,6 +179,14 @@ bool App::init() {
 
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1);
+
+#ifdef __APPLE__
+    // macOS: ドラッグ＆ドロップイベントをフック
+    void* nsWindow = glfwGetCocoaWindow(m_window);
+    if (nsWindow) {
+        pbterm_setupDragDropHooks(nsWindow);
+    }
+#endif
 
     // フレームバッファサイズ変更コールバックを設定
     glfwSetWindowUserPointer(m_window, this);

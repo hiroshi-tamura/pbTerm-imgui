@@ -9,3 +9,12 @@ bool isExternalDragInProgress();
 void setExternalDragInProgress(bool inProgress);
 
 } // namespace pbterm
+
+// GLFWウィンドウのドラッグイベントをフックする（App初期化時に呼ぶ）
+#ifdef __cplusplus
+extern "C" {
+#endif
+void pbterm_setupDragDropHooks(void* nsWindow);
+#ifdef __cplusplus
+}
+#endif
